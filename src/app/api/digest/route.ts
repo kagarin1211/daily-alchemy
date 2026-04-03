@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'No posts today', sent: false });
     }
 
-    const digestText = `今日は${postCount}件の痕跡が置かれました。\n必要なときに、静かに見に来てください。`;
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}` : '';
+    const digestText = `今日は${postCount}件の痕跡が置かれました。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
 
     await sendLineDigestMessage(digestText);
 
