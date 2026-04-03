@@ -3,8 +3,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import liff from '@line/liff';
 
+interface MeditationAudio {
+  id: string;
+  title: string;
+  audioUrl: string;
+  downloadUrl: string;
+}
+
 export default function MeditationPlayer() {
-  const audioUrl = process.env.NEXT_PUBLIC_MEDITATION_AUDIO_URL || '';
   const audioTitle = process.env.NEXT_PUBLIC_MEDITATION_AUDIO_TITLE || '誘導瞑想音声';
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -12,24 +18,32 @@ export default function MeditationPlayer() {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [audios, setAudios] = useState<MeditationAudio[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/meditation-url')
+    fetch('/api/meditation-audios')
       .then((res) => res.json())
       .then((data) => {
-        if (data.url) {
-          setDownloadUrl(data.url);
+        if (data.audios && data.audios.length > 0) {
+          setAudios(data.audios);
         }
       })
       .catch(() => {});
   }, []);
 
+  const currentAudio = audios[currentIndex];
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    console.log('MeditationPlayer: audioUrl =', audioUrl);
+    setIsLoading(true);
+    setError(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
@@ -63,7 +77,7 @@ export default function MeditationPlayer() {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [audioUrl]);
+  }, [currentIndex, audios]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -93,16 +107,60 @@ export default function MeditationPlayer() {
   };
 
   const handleDownload = useCallback(() => {
-    if (!downloadUrl) return;
+    if (!currentAudio?.downloadUrl) return;
     if (liff.isInClient()) {
-      liff.openWindow({ url: downloadUrl, external: true });
+      liff.openWindow({ url: currentAudio.downloadUrl, external: true });
     } else {
-      window.open(downloadUrl, '_blank');
+      window.open(currentAudio.downloadUrl, '_blank');
     }
-  }, [downloadUrl]);
+  }, [currentAudio]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const diff = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      } else if (diff < 0 && currentIndex < audios.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      }
+    }
+    setTouchStartX(null);
+  }, [touchStartX, currentIndex, audios.length]);
+
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  }, [currentIndex]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < audios.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  }, [currentIndex, audios.length]);
+
+  if (audios.length === 0) {
+    return (
+      <div className="meditation-player">
+        <div className="meditation-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+          </svg>
+        </div>
+        <h2 className="meditation-title">{audioTitle}</h2>
+        <p className="meditation-loading">準備中です</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="meditation-player">
+    <div className="meditation-player" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div className="meditation-icon">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
@@ -110,12 +168,42 @@ export default function MeditationPlayer() {
         </svg>
       </div>
 
-      <h2 className="meditation-title">{audioTitle}</h2>
+      <div className="meditation-title-row">
+        <button
+          className="meditation-nav-btn"
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+          aria-label="前の音声"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="19 20 9 12 19 4 19 20"></polygon>
+            <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+        </button>
+        <h2 className="meditation-title">{currentAudio.title}</h2>
+        <button
+          className="meditation-nav-btn"
+          onClick={handleNext}
+          disabled={currentIndex === audios.length - 1}
+          aria-label="次の音声"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 4 15 12 5 20 5 4"></polygon>
+            <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+        </button>
+      </div>
+
+      {audios.length > 1 && (
+        <p className="meditation-page-indicator">
+          {currentIndex + 1} / {audios.length}
+        </p>
+      )}
 
       {isLoading && <p className="meditation-loading">音声を読み込み中...</p>}
       {error && <p className="meditation-loading" style={{ color: '#c44' }}>{error}</p>}
 
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <audio ref={audioRef} src={currentAudio.audioUrl} preload="metadata" />
 
       <div className="meditation-controls">
         <span className="meditation-time">{formatTime(currentTime)}</span>
@@ -154,8 +242,8 @@ export default function MeditationPlayer() {
         <button
           className="meditation-action-btn"
           onClick={handleDownload}
-          disabled={!downloadUrl}
-          style={{ opacity: downloadUrl ? 1 : 0.5 }}
+          disabled={!currentAudio?.downloadUrl}
+          style={{ opacity: currentAudio?.downloadUrl ? 1 : 0.5 }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -164,11 +252,6 @@ export default function MeditationPlayer() {
           </svg>
           ダウンロード
         </button>
-        {!downloadUrl && (
-          <p className="meditation-hint" style={{ marginTop: 4, textAlign: 'center' }}>
-            準備中です
-          </p>
-        )}
       </div>
     </div>
   );

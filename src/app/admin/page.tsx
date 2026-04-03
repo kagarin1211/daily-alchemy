@@ -22,6 +22,13 @@ interface Post {
   cohorts: { name: string } | null;
 }
 
+interface MeditationAudio {
+  id: string;
+  title: string;
+  audioUrl: string;
+  downloadUrl: string;
+}
+
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -34,9 +41,9 @@ export default function AdminPage() {
   const [createdCohort, setCreatedCohort] = useState<Cohort | null>(null);
   const [activeSection, setActiveSection] = useState<'cohorts' | 'posts' | 'meditation'>('cohorts');
   const [selectedCohortId, setSelectedCohortId] = useState<string>('');
-  const [meditationUrl, setMeditationUrl] = useState('');
-  const [meditationUrlLoading, setMeditationUrlLoading] = useState(false);
-  const [meditationUrlMessage, setMeditationUrlMessage] = useState<string | null>(null);
+  const [audios, setAudios] = useState<MeditationAudio[]>([]);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [audioMessage, setAudioMessage] = useState<string | null>(null);
 
   const handleLogin = useCallback(async () => {
     try {
@@ -168,44 +175,64 @@ export default function AdminPage() {
     }
   }, [password, fetchPosts, selectedCohortId]);
 
-  const fetchMeditationUrl = useCallback(async () => {
+  const fetchAudios = useCallback(async () => {
+    setAudioLoading(true);
     try {
-      const res = await fetch('/api/admin/meditation-url', {
+      const res = await fetch('/api/admin/meditation-audios', {
         headers: { 'Authorization': `Bearer ${password}` },
       });
       if (res.ok) {
         const data = await res.json();
-        setMeditationUrl(data.url || '');
+        setAudios(data.audios || []);
       }
     } catch (err) {
-      console.error('Fetch meditation URL error:', err);
+      console.error('Fetch audios error:', err);
+    } finally {
+      setAudioLoading(false);
     }
   }, [password]);
 
-  const handleSaveMeditationUrl = useCallback(async () => {
-    setMeditationUrlLoading(true);
-    setMeditationUrlMessage(null);
+  const handleSaveAudios = useCallback(async () => {
+    setAudioLoading(true);
+    setAudioMessage(null);
     try {
-      const res = await fetch('/api/admin/meditation-url', {
+      const res = await fetch('/api/admin/meditation-audios', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${password}`,
         },
-        body: JSON.stringify({ url: meditationUrl }),
+        body: JSON.stringify({ audios }),
       });
 
       if (!res.ok) {
         throw new Error('保存に失敗しました');
       }
 
-      setMeditationUrlMessage('保存しました');
+      setAudioMessage('保存しました');
     } catch (err) {
-      setMeditationUrlMessage(err instanceof Error ? err.message : '保存に失敗しました');
+      setAudioMessage(err instanceof Error ? err.message : '保存に失敗しました');
     } finally {
-      setMeditationUrlLoading(false);
+      setAudioLoading(false);
     }
-  }, [meditationUrl, password]);
+  }, [audios, password]);
+
+  const handleAddAudio = useCallback(() => {
+    setAudios([...audios, {
+      id: crypto.randomUUID(),
+      title: '',
+      audioUrl: '',
+      downloadUrl: '',
+    }]);
+  }, [audios]);
+
+  const handleRemoveAudio = useCallback((id: string) => {
+    setAudios(audios.filter(a => a.id !== id));
+  }, [audios]);
+
+  const handleUpdateAudio = useCallback((id: string, field: keyof MeditationAudio, value: string) => {
+    setAudios(audios.map(a => a.id === id ? { ...a, [field]: value } : a));
+  }, [audios]);
 
   const handleSectionChange = useCallback((section: 'cohorts' | 'posts' | 'meditation') => {
     setActiveSection(section);
@@ -213,7 +240,7 @@ export default function AdminPage() {
       fetchPosts(selectedCohortId || undefined);
     }
     if (section === 'meditation') {
-      fetchMeditationUrl();
+      fetchAudios();
     }
   }, [fetchPosts, selectedCohortId]);
 
@@ -472,39 +499,102 @@ export default function AdminPage() {
 
       {activeSection === 'meditation' && (
         <div className="form-card">
-          <h3 style={{ fontSize: 16, marginBottom: 12 }}>音声ダウンロードURL設定</h3>
+          <h3 style={{ fontSize: 16, marginBottom: 12 }}>音声リスト設定</h3>
           <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-            ギガファイル便などの外部ファイル共有サービスのURLを設定してください。<br />
-            ダウンロードボタンを押すと、このURLが外部ブラウザで開かれます。
+            複数の誘導瞑想音声を登録できます。音声はスワイプで切り替えられます。
           </p>
-          <div className="form-group">
-            <label className="form-label" htmlFor="meditationUrl">
-              ダウンロードURL
-            </label>
-            <input
-              type="text"
-              id="meditationUrl"
-              className="form-text-input"
-              placeholder="https://example.com/download-link"
-              value={meditationUrl}
-              onChange={(e) => setMeditationUrl(e.target.value)}
-            />
-          </div>
+
+          {audioLoading && <p style={{ fontSize: 13, color: '#888', textAlign: 'center' }}>読み込み中...</p>}
+
+          {audios.map((audio, index) => (
+            <div
+              key={audio.id}
+              style={{
+                padding: 16,
+                border: '1px solid #e8e4dd',
+                borderRadius: 8,
+                marginBottom: 12,
+                background: '#faf9f7',
+                position: 'relative',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#888' }}>音声 {index + 1}</span>
+                <button
+                  onClick={() => handleRemoveAudio(audio.id)}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    border: '1px solid #c44',
+                    borderRadius: 4,
+                    background: '#fff',
+                    color: '#c44',
+                    cursor: 'pointer',
+                  }}
+                >
+                  削除
+                </button>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">タイトル</label>
+                <input
+                  type="text"
+                  className="form-text-input"
+                  placeholder="ヨガニドラ"
+                  value={audio.title}
+                  onChange={(e) => handleUpdateAudio(audio.id, 'title', e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">音声ファイルURL（再生用）</label>
+                <input
+                  type="text"
+                  className="form-text-input"
+                  placeholder="/audio/meditation-0403.m4a"
+                  value={audio.audioUrl}
+                  onChange={(e) => handleUpdateAudio(audio.id, 'audioUrl', e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">ダウンロードURL（ギガファイル便など）</label>
+                <input
+                  type="text"
+                  className="form-text-input"
+                  placeholder="https://example.com/download"
+                  value={audio.downloadUrl}
+                  onChange={(e) => handleUpdateAudio(audio.id, 'downloadUrl', e.target.value)}
+                />
+              </div>
+            </div>
+          ))}
+
           <button
             className="submit-button"
-            onClick={handleSaveMeditationUrl}
-            disabled={meditationUrlLoading}
+            onClick={handleAddAudio}
+            style={{ background: '#9aaa8a', marginBottom: 8 }}
           >
-            {meditationUrlLoading ? '保存中...' : '保存'}
+            音声を追加
           </button>
-          {meditationUrlMessage && (
+
+          <button
+            className="submit-button"
+            onClick={handleSaveAudios}
+            disabled={audioLoading}
+          >
+            {audioLoading ? '保存中...' : '保存'}
+          </button>
+
+          {audioMessage && (
             <div style={{
               marginTop: 12,
               fontSize: 13,
-              color: meditationUrlMessage.includes('失敗') ? '#c44' : '#2e7d32',
+              color: audioMessage.includes('失敗') ? '#c44' : '#2e7d32',
               textAlign: 'center',
             }}>
-              {meditationUrlMessage}
+              {audioMessage}
             </div>
           )}
         </div>
