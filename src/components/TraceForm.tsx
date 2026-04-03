@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import liff from '@line/liff';
 import { hashLineUserId } from '@/lib/crypto';
 import { compressImage } from '@/lib/image';
@@ -13,9 +13,12 @@ interface FormData {
 
 interface TraceFormProps {
   cohortId: string | null;
+  authorHash: string | null;
+  editingTrace: { id: string; content_text: string | null; display_name: string | null; image_url: string | null } | null;
+  onEditComplete: () => void;
 }
 
-export default function TraceForm({ cohortId }: TraceFormProps) {
+export default function TraceForm({ cohortId, authorHash, editingTrace, onEditComplete }: TraceFormProps) {
   const [formData, setFormData] = useState<FormData>({
     contentText: '',
     displayName: '',
@@ -27,6 +30,20 @@ export default function TraceForm({ cohortId }: TraceFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingTrace) {
+      setFormData({
+        contentText: editingTrace.content_text || '',
+        displayName: editingTrace.display_name || '',
+        imageUrl: editingTrace.image_url,
+      });
+      setImagePreview(editingTrace.image_url);
+    } else {
+      setFormData({ contentText: '', displayName: '', imageUrl: null });
+      setImagePreview(null);
+    }
+  }, [editingTrace]);
 
   const handleChange = useCallback(
     (field: keyof FormData, value: string | null) => {
@@ -100,41 +117,67 @@ export default function TraceForm({ cohortId }: TraceFormProps) {
       setError(null);
 
       try {
-        let authorHash = '';
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          authorHash = hashLineUserId(profile.userId);
+        if (!authorHash) {
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            const { hashUserId } = await import('@/lib/utils');
+            const hash = await hashUserId(profile.userId);
+            authorHash = hash;
+          } else {
+            throw new Error('LINE 内で開いてください');
+          }
+        }
+
+        if (editingTrace) {
+          const body = {
+            post_id: editingTrace.id,
+            author_hash: authorHash,
+            content_text: formData.contentText.trim() || null,
+            display_name: formData.displayName.trim() || null,
+            image_url: formData.imageUrl,
+          };
+
+          const res = await fetch('/api/posts', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || '更新に失敗しました');
+          }
+
+          onEditComplete();
         } else {
-          authorHash = `guest_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const body = {
+            content_text: formData.contentText.trim() || null,
+            display_name: formData.displayName.trim() || null,
+            author_hash: authorHash,
+            image_url: formData.imageUrl,
+            cohort_id: cohortId,
+          };
+
+          const res = await fetch('/api/posts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || '投稿に失敗しました');
+          }
+
+          setIsSubmitted(true);
         }
-
-        const body = {
-          content_text: formData.contentText.trim() || null,
-          display_name: formData.displayName.trim() || null,
-          author_hash: authorHash,
-          image_url: formData.imageUrl,
-          cohort_id: cohortId,
-        };
-
-        const res = await fetch('/api/posts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || '投稿に失敗しました');
-        }
-
-        setIsSubmitted(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : '不明なエラーが発生しました');
       } finally {
         setIsSubmitting(false);
       }
     },
-    [formData]
+    [formData, cohortId, authorHash, editingTrace, onEditComplete]
   );
 
   const handleReset = useCallback(() => {
@@ -175,7 +218,7 @@ export default function TraceForm({ cohortId }: TraceFormProps) {
       <div className="form-card">
         <div className="form-group">
           <label className="form-label" htmlFor="content">
-            今日の痕跡
+            {editingTrace ? '痕跡を編集' : '今日の痕跡'}
           </label>
           <textarea
             id="content"
@@ -250,8 +293,19 @@ export default function TraceForm({ cohortId }: TraceFormProps) {
           (!formData.contentText.trim() && !formData.imageUrl)
         }
       >
-        {isSubmitting ? '置いています...' : '置いておく'}
+        {isSubmitting ? '処理中...' : editingTrace ? '更新する' : '置いておく'}
       </button>
+
+      {editingTrace && (
+        <button
+          type="button"
+          className="back-button"
+          style={{ marginTop: 8 }}
+          onClick={onEditComplete}
+        >
+          キャンセル
+        </button>
+      )}
     </form>
   );
 }

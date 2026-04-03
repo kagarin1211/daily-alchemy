@@ -10,6 +10,7 @@ import {
   getActiveCohortId,
   setActiveCohortId,
 } from '@/lib/auth';
+import { hashUserId } from '@/lib/utils';
 
 type Tab = 'write' | 'read';
 type Screen = 'cohort' | 'main';
@@ -19,6 +20,13 @@ interface StoredCohort {
   name: string;
   code: string;
   passcode: string;
+}
+
+interface EditingTrace {
+  id: string;
+  content_text: string | null;
+  display_name: string | null;
+  image_url: string | null;
 }
 
 export default function Home() {
@@ -34,6 +42,8 @@ export default function Home() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('read');
   const [liffError, setLiffError] = useState<string | null>(null);
+  const [authorHash, setAuthorHash] = useState<string | null>(null);
+  const [editingTrace, setEditingTrace] = useState<EditingTrace | null>(null);
 
   useEffect(() => {
     const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
@@ -44,8 +54,15 @@ export default function Home() {
 
     liff
       .init({ liffId })
-      .then(() => {
+      .then(async () => {
         setLiffReady(true);
+
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          const hash = await hashUserId(profile.userId);
+          setAuthorHash(hash);
+        }
+
         const cohorts = getStoredCohorts();
         setStoredCohorts(cohorts);
 
@@ -112,12 +129,47 @@ export default function Home() {
     setActiveCohortId(cohort.id);
     setCohortId(cohort.id);
     setCohortName(cohort.name);
+    setEditingTrace(null);
     setMenuOpen(false);
   }, []);
 
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
+    if (tab === 'write') {
+      setEditingTrace(null);
+    }
   }, []);
+
+  const handleEdit = useCallback((trace: { id: string; content_text: string | null; display_name: string | null; image_url: string | null }) => {
+    setEditingTrace({
+      id: trace.id,
+      content_text: trace.content_text,
+      display_name: trace.display_name,
+      image_url: trace.image_url,
+    });
+    setActiveTab('write');
+  }, []);
+
+  const handleDelete = useCallback(async (trace: { id: string }) => {
+    if (!confirm('この痕跡を削除しますか？')) return;
+    if (!authorHash) return;
+
+    try {
+      const res = await fetch('/api/posts', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_id: trace.id, author_hash: authorHash }),
+      });
+
+      if (!res.ok) {
+        throw new Error('削除に失敗しました');
+      }
+
+      setActiveTab('read');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '削除に失敗しました');
+    }
+  }, [authorHash]);
 
   if (liffError) {
     return (
@@ -156,13 +208,13 @@ export default function Home() {
         <div className="form-card">
           <div className="form-group">
             <label className="form-label" htmlFor="passcode">
-              参加用パスコード
+              参加用コード
             </label>
             <input
               type="text"
               id="passcode"
               className="form-text-input"
-              placeholder="運営から配布されたパスコード"
+              placeholder="運営から配布されたコード"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCohortAuth()}
@@ -264,9 +316,9 @@ export default function Home() {
 
       <main className="main-content">
         {activeTab === 'write' ? (
-          <TraceForm cohortId={cohortId} />
+          <TraceForm cohortId={cohortId} authorHash={authorHash} editingTrace={editingTrace} onEditComplete={() => { setEditingTrace(null); setActiveTab('read'); }} />
         ) : (
-          <TraceList cohortId={cohortId} />
+          <TraceList cohortId={cohortId} authorHash={authorHash} onEdit={handleEdit} onDelete={handleDelete} />
         )}
       </main>
     </div>

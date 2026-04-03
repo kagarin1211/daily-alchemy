@@ -8,13 +8,17 @@ interface Trace {
   content_text: string | null;
   display_name: string | null;
   image_url: string | null;
+  author_hash: string;
 }
 
 interface TraceListProps {
   cohortId: string | null;
+  authorHash: string | null;
+  onEdit: (trace: Trace) => void;
+  onDelete: (trace: Trace) => void;
 }
 
-export default function TraceList({ cohortId }: TraceListProps) {
+export default function TraceList({ cohortId, authorHash, onEdit, onDelete }: TraceListProps) {
   const [traces, setTraces] = useState<Trace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +58,10 @@ export default function TraceList({ cohortId }: TraceListProps) {
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${month}月${day}日 ${hours}:${minutes}`;
+  };
+
+  const isOwnPost = (trace: Trace): boolean => {
+    return authorHash !== null && trace.author_hash === authorHash;
   };
 
   if (loading) {
@@ -100,7 +108,19 @@ export default function TraceList({ cohortId }: TraceListProps) {
         <article key={trace.id} className="trace-card">
           <div className="trace-header">
             <span className="trace-author">{getDisplayName(trace)}</span>
-            <time className="trace-date">{formatDate(trace.created_at)}</time>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isOwnPost(trace) && (
+                <div className="trace-actions">
+                  <button className="trace-action-btn" onClick={() => onEdit(trace)}>
+                    編集
+                  </button>
+                  <button className="trace-action-btn trace-action-btn-delete" onClick={() => onDelete(trace)}>
+                    削除
+                  </button>
+                </div>
+              )}
+              <time className="trace-date">{formatDate(trace.created_at)}</time>
+            </div>
           </div>
           <div className="trace-content">
             {trace.content_text && (
