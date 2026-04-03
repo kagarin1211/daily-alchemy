@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { error } = await supabaseAdmin
       .from('app_settings')
-      .upsert({ key: 'meditation_download_url', value: url, updated_at: new Date().toISOString() });
+      .upsert({ key: 'meditation_download_url', value: url, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
     if (error) {
       console.error('Update meditation URL error:', error);
