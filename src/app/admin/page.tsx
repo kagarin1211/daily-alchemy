@@ -18,6 +18,7 @@ interface Post {
   display_name: string | null;
   image_url: string | null;
   cohort_id: string;
+  is_visible: boolean;
   cohorts: { name: string } | null;
 }
 
@@ -120,8 +121,29 @@ export default function AdminPage() {
     }
   }, [newName, newCode, password, fetchCohorts]);
 
+  const handleToggleVisibility = useCallback(async (postId: string, currentVisible: boolean) => {
+    try {
+      const res = await fetch('/api/admin/posts', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({ post_id: postId, is_visible: !currentVisible }),
+      });
+
+      if (!res.ok) {
+        throw new Error('更新に失敗しました');
+      }
+
+      await fetchPosts(selectedCohortId || undefined);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '更新に失敗しました');
+    }
+  }, [password, fetchPosts, selectedCohortId]);
+
   const handleDeletePost = useCallback(async (postId: string) => {
-    if (!confirm('この投稿を非表示にしますか？')) return;
+    if (!confirm('この投稿をデータベースから完全に削除しますか？\nこの操作は元に戻せません。')) return;
 
     try {
       const res = await fetch('/api/admin/posts', {
@@ -327,27 +349,56 @@ export default function AdminPage() {
                     padding: 12,
                     border: '1px solid #e8e4dd',
                     borderRadius: 8,
-                    background: '#fff',
+                    background: post.is_visible ? '#fff' : '#f9f7f4',
+                    opacity: post.is_visible ? 1 : 0.7,
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, color: '#888' }}>
+                    <div style={{ fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        style={{
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          background: post.is_visible ? '#e8f5e9' : '#fff3e0',
+                          color: post.is_visible ? '#2e7d32' : '#e65100',
+                        }}
+                      >
+                        {post.is_visible ? '表示中' : '非表示'}
+                      </span>
                       {post.cohorts?.name || '不明'} | {post.display_name || '匿名'} | {formatDate(post.created_at)}
                     </div>
-                    <button
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        border: '1px solid #c44',
-                        borderRadius: 4,
-                        background: '#fff',
-                        color: '#c44',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => handleDeletePost(post.id)}
-                    >
-                      非表示
-                    </button>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          border: '1px solid #888',
+                          borderRadius: 4,
+                          background: '#fff',
+                          color: '#555',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleToggleVisibility(post.id, post.is_visible)}
+                      >
+                        {post.is_visible ? '非表示にする' : '再表示'}
+                      </button>
+                      <button
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          border: '1px solid #c44',
+                          borderRadius: 4,
+                          background: '#fff',
+                          color: '#c44',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleDeletePost(post.id)}
+                      >
+                        削除
+                      </button>
+                    </div>
                   </div>
                   {post.content_text && (
                     <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 8 }}>
