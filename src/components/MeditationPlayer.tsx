@@ -82,18 +82,8 @@ export default function MeditationPlayer() {
 
   const handleDownload = useCallback(() => {
     if (!audioUrl) return;
-    const fullUrl = `${window.location.origin}${audioUrl}`;
-    if (liff.isInClient()) {
-      liff.openWindow({ url: fullUrl, external: true });
-    } else {
-      const a = document.createElement('a');
-      a.href = audioUrl;
-      a.download = `${audioTitle}.m4a`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  }, [audioUrl, audioTitle]);
+    window.location.href = audioUrl;
+  }, [audioUrl]);
 
   return (
     <div className="meditation-player">
