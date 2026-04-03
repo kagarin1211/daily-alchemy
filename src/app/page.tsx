@@ -8,7 +8,7 @@ import {
   getStoredCohorts,
   addStoredCohort,
   getActiveCohortId,
-  clearAllCohorts,
+  setActiveCohortId,
 } from '@/lib/auth';
 
 type Tab = 'write' | 'read';
@@ -108,13 +108,10 @@ export default function Home() {
     }
   }, [passcode]);
 
-  const handleLogout = useCallback(() => {
-    clearAllCohorts();
-    setStoredCohorts([]);
-    setCohortId(null);
-    setCohortName('');
-    setPasscode('');
-    setScreen('cohort');
+  const handleSwitchCohort = useCallback((cohort: StoredCohort) => {
+    setActiveCohortId(cohort.id);
+    setCohortId(cohort.id);
+    setCohortName(cohort.name);
     setMenuOpen(false);
   }, []);
 
@@ -228,15 +225,23 @@ export default function Home() {
 
         {menuOpen && (
           <div className="menu-dropdown">
+            <div className="menu-title">参加中の期</div>
+            {storedCohorts.map((cohort) => (
+              <button
+                key={cohort.id}
+                className={`menu-item ${cohort.id === cohortId ? 'active' : ''}`}
+                onClick={() => handleSwitchCohort(cohort)}
+              >
+                {cohort.name}
+              </button>
+            ))}
+            <div className="menu-divider"></div>
             <button className="menu-item menu-item-add" onClick={() => {
               setMenuOpen(false);
               setCameFromMain(true);
               setScreen('cohort');
             }}>
               新しい期に参加する
-            </button>
-            <button className="menu-item menu-item-logout" onClick={handleLogout}>
-              参加中の期を解除
             </button>
           </div>
         )}
