@@ -20,7 +20,6 @@ export default function MeditationPlayer() {
   const [error, setError] = useState<string | null>(null);
   const [audios, setAudios] = useState<MeditationAudio[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/meditation-audios')
@@ -115,23 +114,6 @@ export default function MeditationPlayer() {
     }
   }, [currentAudio]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    setTouchStartX(e.touches[0].clientX);
-  }, []);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (touchStartX === null) return;
-    const diff = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0 && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
-      } else if (diff < 0 && currentIndex < audios.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      }
-    }
-    setTouchStartX(null);
-  }, [touchStartX, currentIndex, audios.length]);
-
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
@@ -147,12 +129,6 @@ export default function MeditationPlayer() {
   if (audios.length === 0) {
     return (
       <div className="meditation-player">
-        <div className="meditation-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polygon points="10 8 16 12 10 16 10 8"></polygon>
-          </svg>
-        </div>
         <h2 className="meditation-title">{audioTitle}</h2>
         <p className="meditation-loading">準備中です</p>
       </div>
@@ -160,45 +136,37 @@ export default function MeditationPlayer() {
   }
 
   return (
-    <div className="meditation-player" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-      <div className="meditation-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polygon points="10 8 16 12 10 16 10 8"></polygon>
-        </svg>
-      </div>
-
-      <div className="meditation-title-row">
+    <div className="meditation-player">
+      <div className="meditation-selector">
         <button
-          className="meditation-nav-btn"
+          className="meditation-selector-btn"
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          aria-label="前の音声"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="19 20 9 12 19 4 19 20"></polygon>
-            <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="15 18 9 12 15 6 15 18"></polygon>
           </svg>
         </button>
-        <h2 className="meditation-title">{currentAudio.title}</h2>
+
+        <div className="meditation-selector-content">
+          <h2 className="meditation-title">{currentAudio.title}</h2>
+          {audios.length > 1 && (
+            <p className="meditation-page-indicator">
+              {currentIndex + 1} / {audios.length}
+            </p>
+          )}
+        </div>
+
         <button
-          className="meditation-nav-btn"
+          className="meditation-selector-btn"
           onClick={handleNext}
           disabled={currentIndex === audios.length - 1}
-          aria-label="次の音声"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="5 4 15 12 5 20 5 4"></polygon>
-            <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="9 18 15 12 9 6 9 18"></polygon>
           </svg>
         </button>
       </div>
-
-      {audios.length > 1 && (
-        <p className="meditation-page-indicator">
-          {currentIndex + 1} / {audios.length}
-        </p>
-      )}
 
       {isLoading && <p className="meditation-loading">音声を読み込み中...</p>}
       {error && <p className="meditation-loading" style={{ color: '#c44' }}>{error}</p>}
