@@ -16,39 +16,58 @@ export async function POST(request: NextRequest) {
     const tomorrowJST = new Date(todayJST);
     tomorrowJST.setDate(tomorrowJST.getDate() + 1);
 
-    const { count, error: countError } = await supabaseAdmin
-      .from('posts')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_visible', true)
-      .gte('created_at', todayJST.toISOString())
-      .lt('created_at', tomorrowJST.toISOString());
+    const { data: cohorts, error: cohortsError } = await supabaseAdmin
+      .from('cohorts')
+      .select('id, name, code')
+      .eq('is_active', true);
 
-    if (countError) {
-      console.error('Count error:', countError);
-      return NextResponse.json({ error: 'カウントに失敗しました' }, { status: 500 });
-    }
-
-    const postCount = count || 0;
-
-    if (postCount === 0) {
-      return NextResponse.json({ message: 'No posts today', sent: false });
+    if (cohortsError) {
+      console.error('Fetch cohorts error:', cohortsError);
+      return NextResponse.json({ error: 'Cohort の取得に失敗しました' }, { status: 500 });
     }
 
     const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
     const liffUrl = liffId ? `https://liff.line.me/${liffId}` : '';
-    const digestText = `今日は${postCount}件の痕跡が置かれました。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
 
-    await sendLineDigestMessage(digestText);
+    const results: { name: string; count: number }[] = [];
+
+    for (const cohort of cohorts) {
+      const { count, error: countError } = await supabaseAdmin
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_visible', true)
+        .eq('cohort_id', cohort.id)
+        .gte('created_at', todayJST.toISOString())
+        .lt('created_at', tomorrowJST.toISOString());
+
+      if (countError) {
+        console.error(`Count error for ${cohort.name}:`, countError);
+        continue;
+      }
+
+      const postCount = count || 0;
+
+      if (postCount > 0) {
+        results.push({ name: cohort.name, count: postCount });
+
+        const digestText = `【${cohort.name}】\n今日は${postCount}件の痕跡が置かれました。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
+        await sendLineDigestMessage(digestText);
+      }
+    }
+
+    if (results.length === 0) {
+      return NextResponse.json({ message: 'No posts today', sent: false });
+    }
 
     await supabaseAdmin.from('daily_digest_logs').insert({
       digest_date: todayJST.toISOString().split('T')[0],
-      post_count: postCount,
+      post_count: results.reduce((sum, r) => sum + r.count, 0),
       sent_at: new Date().toISOString(),
     });
 
     return NextResponse.json({
       message: 'Digest sent',
-      post_count: postCount,
+      cohorts: results,
       sent: true,
     });
   } catch (err) {

@@ -11,7 +11,11 @@ interface FormData {
   imageUrl: string | null;
 }
 
-export default function TraceForm() {
+interface TraceFormProps {
+  cohortId: string | null;
+}
+
+export default function TraceForm({ cohortId }: TraceFormProps) {
   const [formData, setFormData] = useState<FormData>({
     contentText: '',
     displayName: '',
@@ -109,6 +113,7 @@ export default function TraceForm() {
           display_name: formData.displayName.trim() || null,
           author_hash: authorHash,
           image_url: formData.imageUrl,
+          cohort_id: cohortId,
         };
 
         const res = await fetch('/api/posts', {

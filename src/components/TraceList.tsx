@@ -10,7 +10,11 @@ interface Trace {
   image_url: string | null;
 }
 
-export default function TraceList() {
+interface TraceListProps {
+  cohortId: string | null;
+}
+
+export default function TraceList({ cohortId }: TraceListProps) {
   const [traces, setTraces] = useState<Trace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +23,10 @@ export default function TraceList() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/posts');
+      const params = new URLSearchParams();
+      if (cohortId) params.set('cohort_id', cohortId);
+      
+      const res = await fetch(`/api/posts?${params.toString()}`);
       if (!res.ok) {
         throw new Error('痕跡の取得に失敗しました');
       }
@@ -30,7 +37,7 @@ export default function TraceList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cohortId]);
 
   useEffect(() => {
     fetchTraces();
