@@ -10,14 +10,18 @@ export default function MeditationPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    console.log('MeditationPlayer: audioUrl =', audioUrl);
+
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
       setIsLoading(false);
+      setError(null);
     };
 
     const handleTimeUpdate = () => {
@@ -29,16 +33,24 @@ export default function MeditationPlayer() {
       setCurrentTime(0);
     };
 
+    const handleError = () => {
+      setIsLoading(false);
+      setError('音声の読み込みに失敗しました');
+      console.error('Audio load error:', audio.error);
+    };
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [audioUrl]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -93,6 +105,7 @@ export default function MeditationPlayer() {
       <h2 className="meditation-title">{audioTitle}</h2>
 
       {isLoading && <p className="meditation-loading">音声を読み込み中...</p>}
+      {error && <p className="meditation-loading" style={{ color: '#c44' }}>{error}</p>}
 
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
 
