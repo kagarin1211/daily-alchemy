@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('posts')
-      .select('id, created_at, practice_text, feeling_text, next_step_text, display_mode, nickname')
+      .select('id, created_at, practice_text, feeling_text, next_step_text, display_mode, nickname, image_url')
       .eq('is_visible', true)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -33,13 +33,14 @@ export async function POST(request: NextRequest) {
       display_mode,
       nickname,
       author_hash,
+      image_url,
     } = body;
 
     if (!author_hash) {
       return NextResponse.json({ error: '認証情報が不足しています' }, { status: 400 });
     }
 
-    if (!practice_text && !feeling_text && !next_step_text) {
+    if (!practice_text && !feeling_text && !next_step_text && !image_url) {
       return NextResponse.json(
         { error: '少なくとも1つの項目を入力してください' },
         { status: 400 }
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       display_mode,
       nickname: nickname || null,
       author_hash,
+      image_url: image_url || null,
       is_visible: true,
     }).select().single();
 

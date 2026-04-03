@@ -10,6 +10,7 @@ interface Trace {
   next_step_text: string | null;
   display_mode: string;
   nickname: string | null;
+  image_url: string | null;
 }
 
 export default function TraceList() {
@@ -123,6 +124,9 @@ export default function TraceList() {
                 <div className="trace-item-label">明日の一歩</div>
                 <div>{trace.next_step_text}</div>
               </div>
+            )}
+            {trace.image_url && (
+              <img src={trace.image_url} alt="" className="trace-image" loading="lazy" />
             )}
           </div>
         </article>

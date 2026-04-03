@@ -375,6 +375,73 @@ body {
   font-size: 14px;
 }
 
+/* Image Select Button */
+.image-select-button {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-input-bg);
+  color: var(--color-text-subtle);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.image-select-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.image-select-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Image Preview */
+.image-preview-container {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.image-preview {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.image-remove-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.image-remove-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* Trace Image */
+.trace-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  display: block;
+}
+
 /* Loading more */
 .loading-more {
   text-align: center;

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import liff from '@line/liff';
 import { hashLineUserId } from '@/lib/crypto';
+import { compressImage } from '@/lib/image';
 
 type DisplayMode = 'anonymous' | 'nickname' | 'nameless';
 
@@ -12,6 +13,7 @@ interface FormData {
   nextStepText: string;
   displayMode: DisplayMode;
   nickname: string;
+  imageUrl: string | null;
 }
 
 export default function TraceForm() {
@@ -21,17 +23,79 @@ export default function TraceForm() {
     nextStepText: '',
     displayMode: 'anonymous',
     nickname: '',
+    imageUrl: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = useCallback(
-    (field: keyof FormData, value: string) => {
+    (field: keyof FormData, value: string | null) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
     []
   );
+
+  const handleImageSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        setError('画像ファイルを選択してください');
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        setError('画像サイズは10MB以下にしてください');
+        return;
+      }
+
+      try {
+        setIsUploading(true);
+        setError(null);
+
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+
+        const compressedBlob = await compressImage(file, 800, 0.7);
+        const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', compressedFile);
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || '画像のアップロードに失敗しました');
+        }
+
+        const data = await res.json();
+        handleChange('imageUrl', data.url);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+        setImagePreview(null);
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [handleChange]
+  );
+
+  const handleRemoveImage = useCallback(() => {
+    setImagePreview(null);
+    handleChange('imageUrl', null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [handleChange]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -55,6 +119,7 @@ export default function TraceForm() {
           display_mode: formData.displayMode,
           nickname: formData.displayMode === 'nickname' ? formData.nickname.trim() || null : null,
           author_hash: authorHash,
+          image_url: formData.imageUrl,
         };
 
         const res = await fetch('/api/posts', {
@@ -85,9 +150,14 @@ export default function TraceForm() {
       nextStepText: '',
       displayMode: 'anonymous',
       nickname: '',
+      imageUrl: null,
     });
     setIsSubmitted(false);
     setError(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }, []);
 
   if (isSubmitted) {
@@ -155,6 +225,38 @@ export default function TraceForm() {
         </div>
 
         <div className="form-group">
+          <span className="form-label">写真（任意）</span>
+          {!imagePreview ? (
+            <button
+              type="button"
+              className="image-select-button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? 'アップロード中...' : '写真を選ぶ'}
+            </button>
+          ) : (
+            <div className="image-preview-container">
+              <img src={imagePreview} alt="プレビュー" className="image-preview" />
+              <button
+                type="button"
+                className="image-remove-button"
+                onClick={handleRemoveImage}
+              >
+                削除
+              </button>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImageSelect}
+          />
+        </div>
+
+        <div className="form-group">
           <span className="form-label">名前</span>
           <div className="display-mode-group">
             <div className="display-mode-option">
@@ -215,9 +317,11 @@ export default function TraceForm() {
         className="submit-button"
         disabled={
           isSubmitting ||
+          isUploading ||
           (!formData.practiceText.trim() &&
             !formData.feelingText.trim() &&
-            !formData.nextStepText.trim())
+            !formData.nextStepText.trim() &&
+            !formData.imageUrl)
         }
       >
         {isSubmitting ? '置いています...' : '置いておく'}
