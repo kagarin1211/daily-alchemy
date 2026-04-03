@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import liff from '@line/liff';
 import TraceForm from '@/components/TraceForm';
 import TraceList from '@/components/TraceList';
-import { getCohortFromStorage, setCohortToStorage } from '@/lib/auth';
+import { getCohortFromStorage, setCohortToStorage, clearCohortStorage } from '@/lib/auth';
 
 type Tab = 'write' | 'read';
 type Screen = 'cohort' | 'main';
@@ -80,6 +80,14 @@ export default function Home() {
     setActiveTab(tab);
   }, []);
 
+  const handleLogout = useCallback(() => {
+    clearCohortStorage();
+    setCohortId(null);
+    setCohortName('');
+    setPasscode('');
+    setScreen('cohort');
+  }, []);
+
   if (liffError) {
     return (
       <div className="container">
@@ -153,6 +161,11 @@ export default function Home() {
         <p className="app-subtitle">
           {cohortName ? `${cohortName} の痕跡` : '日々の痕跡を、静かに置く'}
         </p>
+        {cohortName && (
+          <button className="logout-button" onClick={handleLogout}>
+            別の期に参加する
+          </button>
+        )}
       </header>
 
       <nav className="tab-nav">
