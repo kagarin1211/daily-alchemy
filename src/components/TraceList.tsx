@@ -5,11 +5,8 @@ import { useEffect, useState, useCallback } from 'react';
 interface Trace {
   id: string;
   created_at: string;
-  practice_text: string | null;
-  feeling_text: string | null;
-  next_step_text: string | null;
-  display_mode: string;
-  nickname: string | null;
+  content_text: string | null;
+  display_name: string | null;
   image_url: string | null;
 }
 
@@ -40,15 +37,7 @@ export default function TraceList() {
   }, [fetchTraces]);
 
   const getDisplayName = (trace: Trace): string => {
-    switch (trace.display_mode) {
-      case 'nickname':
-        return trace.nickname || '匿名';
-      case 'nameless':
-        return '';
-      case 'anonymous':
-      default:
-        return '匿名';
-    }
+    return trace.display_name || '匿名';
   };
 
   const formatDate = (dateStr: string): string => {
@@ -107,22 +96,9 @@ export default function TraceList() {
             <time className="trace-date">{formatDate(trace.created_at)}</time>
           </div>
           <div className="trace-content">
-            {trace.practice_text && (
+            {trace.content_text && (
               <div className="trace-item">
-                <div className="trace-item-label">今日やった実践</div>
-                <div>{trace.practice_text}</div>
-              </div>
-            )}
-            {trace.feeling_text && (
-              <div className="trace-item">
-                <div className="trace-item-label">今のひとこと</div>
-                <div>{trace.feeling_text}</div>
-              </div>
-            )}
-            {trace.next_step_text && (
-              <div className="trace-item">
-                <div className="trace-item-label">明日の一歩</div>
-                <div>{trace.next_step_text}</div>
+                <div>{trace.content_text}</div>
               </div>
             )}
             {trace.image_url && (

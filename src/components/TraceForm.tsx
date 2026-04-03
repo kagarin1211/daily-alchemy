@@ -5,24 +5,16 @@ import liff from '@line/liff';
 import { hashLineUserId } from '@/lib/crypto';
 import { compressImage } from '@/lib/image';
 
-type DisplayMode = 'anonymous' | 'nickname' | 'nameless';
-
 interface FormData {
-  practiceText: string;
-  feelingText: string;
-  nextStepText: string;
-  displayMode: DisplayMode;
-  nickname: string;
+  contentText: string;
+  displayName: string;
   imageUrl: string | null;
 }
 
 export default function TraceForm() {
   const [formData, setFormData] = useState<FormData>({
-    practiceText: '',
-    feelingText: '',
-    nextStepText: '',
-    displayMode: 'anonymous',
-    nickname: '',
+    contentText: '',
+    displayName: '',
     imageUrl: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,11 +105,8 @@ export default function TraceForm() {
         }
 
         const body = {
-          practice_text: formData.practiceText.trim() || null,
-          feeling_text: formData.feelingText.trim() || null,
-          next_step_text: formData.nextStepText.trim() || null,
-          display_mode: formData.displayMode,
-          nickname: formData.displayMode === 'nickname' ? formData.nickname.trim() || null : null,
+          content_text: formData.contentText.trim() || null,
+          display_name: formData.displayName.trim() || null,
           author_hash: authorHash,
           image_url: formData.imageUrl,
         };
@@ -145,11 +134,8 @@ export default function TraceForm() {
 
   const handleReset = useCallback(() => {
     setFormData({
-      practiceText: '',
-      feelingText: '',
-      nextStepText: '',
-      displayMode: 'anonymous',
-      nickname: '',
+      contentText: '',
+      displayName: '',
       imageUrl: null,
     });
     setIsSubmitted(false);
@@ -183,44 +169,16 @@ export default function TraceForm() {
     <form onSubmit={handleSubmit}>
       <div className="form-card">
         <div className="form-group">
-          <label className="form-label" htmlFor="practice">
-            今日やった実践
+          <label className="form-label" htmlFor="content">
+            今日の痕跡
           </label>
           <textarea
-            id="practice"
-            className="form-textarea"
-            placeholder="例: 朝の呼吸を10分、丁寧に過ごそうと意識した"
-            value={formData.practiceText}
-            onChange={(e) => handleChange('practiceText', e.target.value)}
-            maxLength={500}
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="feeling">
-            今のひとこと
-          </label>
-          <textarea
-            id="feeling"
-            className="form-textarea"
-            placeholder="例: なんとなく静かな気分"
-            value={formData.feelingText}
-            onChange={(e) => handleChange('feelingText', e.target.value)}
-            maxLength={300}
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="nextstep">
-            明日の一歩
-          </label>
-          <textarea
-            id="nextstep"
-            className="form-textarea"
-            placeholder="例: 5分だけでも座ってみる"
-            value={formData.nextStepText}
-            onChange={(e) => handleChange('nextStepText', e.target.value)}
-            maxLength={300}
+            id="content"
+            className="form-textarea form-textarea-large"
+            placeholder="今日の実践、思ったこと、気づいたこと..."
+            value={formData.contentText}
+            onChange={(e) => handleChange('contentText', e.target.value)}
+            maxLength={2000}
           />
         </div>
 
@@ -257,52 +215,18 @@ export default function TraceForm() {
         </div>
 
         <div className="form-group">
-          <span className="form-label">名前</span>
-          <div className="display-mode-group">
-            <div className="display-mode-option">
-              <input
-                type="radio"
-                id="mode-anonymous"
-                name="displayMode"
-                value="anonymous"
-                checked={formData.displayMode === 'anonymous'}
-                onChange={() => handleChange('displayMode', 'anonymous')}
-              />
-              <label htmlFor="mode-anonymous">匿名</label>
-            </div>
-            <div className="display-mode-option">
-              <input
-                type="radio"
-                id="mode-nickname"
-                name="displayMode"
-                value="nickname"
-                checked={formData.displayMode === 'nickname'}
-                onChange={() => handleChange('displayMode', 'nickname')}
-              />
-              <label htmlFor="mode-nickname">ニックネーム</label>
-            </div>
-            {formData.displayMode === 'nickname' && (
-              <input
-                type="text"
-                className="nickname-input"
-                placeholder="ニックネーム"
-                value={formData.nickname}
-                onChange={(e) => handleChange('nickname', e.target.value)}
-                maxLength={20}
-              />
-            )}
-            <div className="display-mode-option">
-              <input
-                type="radio"
-                id="mode-nameless"
-                name="displayMode"
-                value="nameless"
-                checked={formData.displayMode === 'nameless'}
-                onChange={() => handleChange('displayMode', 'nameless')}
-              />
-              <label htmlFor="mode-nameless">無記名</label>
-            </div>
-          </div>
+          <label className="form-label" htmlFor="displayName">
+            名前（無記入は匿名）
+          </label>
+          <input
+            type="text"
+            id="displayName"
+            className="form-text-input"
+            placeholder="ニックネームなど"
+            value={formData.displayName}
+            onChange={(e) => handleChange('displayName', e.target.value)}
+            maxLength={20}
+          />
         </div>
       </div>
 
@@ -318,10 +242,7 @@ export default function TraceForm() {
         disabled={
           isSubmitting ||
           isUploading ||
-          (!formData.practiceText.trim() &&
-            !formData.feelingText.trim() &&
-            !formData.nextStepText.trim() &&
-            !formData.imageUrl)
+          (!formData.contentText.trim() && !formData.imageUrl)
         }
       >
         {isSubmitting ? '置いています...' : '置いておく'}

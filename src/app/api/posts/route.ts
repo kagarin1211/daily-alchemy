@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('posts')
-      .select('id, created_at, practice_text, feeling_text, next_step_text, display_mode, nickname, image_url')
+      .select('id, created_at, content_text, display_name, image_url')
       .eq('is_visible', true)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -27,11 +27,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const {
-      practice_text,
-      feeling_text,
-      next_step_text,
-      display_mode,
-      nickname,
+      content_text,
+      display_name,
       author_hash,
       image_url,
     } = body;
@@ -40,23 +37,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '認証情報が不足しています' }, { status: 400 });
     }
 
-    if (!practice_text && !feeling_text && !next_step_text && !image_url) {
+    if (!content_text && !image_url) {
       return NextResponse.json(
-        { error: '少なくとも1つの項目を入力してください' },
+        { error: 'テキストまたは画像を入力してください' },
         { status: 400 }
       );
     }
 
-    if (!['anonymous', 'nickname', 'nameless'].includes(display_mode)) {
-      return NextResponse.json({ error: '表示モードが不正です' }, { status: 400 });
-    }
-
     const { data, error } = await supabaseAdmin.from('posts').insert({
-      practice_text: practice_text || null,
-      feeling_text: feeling_text || null,
-      next_step_text: next_step_text || null,
-      display_mode,
-      nickname: nickname || null,
+      content_text: content_text || null,
+      display_name: display_name || null,
       author_hash,
       image_url: image_url || null,
       is_visible: true,

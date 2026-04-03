@@ -199,6 +199,32 @@ body {
   color: #c4bfb6;
 }
 
+.form-textarea-large {
+  min-height: 160px;
+  line-height: 1.8;
+}
+
+.form-text-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-input-bg);
+  font-size: 14px;
+  color: var(--color-text);
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.form-text-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.form-text-input::placeholder {
+  color: #c4bfb6;
+}
+
 /* Display Mode Selector */
 .display-mode-group {
   display: flex;
