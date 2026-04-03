@@ -24,6 +24,7 @@ interface StoredCohort {
 export default function Home() {
   const [liffReady, setLiffReady] = useState(false);
   const [screen, setScreen] = useState<Screen>('cohort');
+  const [cameFromMain, setCameFromMain] = useState(false);
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [cohortName, setCohortName] = useState<string>('');
   const [storedCohorts, setStoredCohorts] = useState<StoredCohort[]>([]);
@@ -99,6 +100,7 @@ export default function Home() {
       setCohortName(data.name);
       setScreen('main');
       setPasscode('');
+      setCameFromMain(false);
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : '認証に失敗しました');
     } finally {
@@ -181,6 +183,18 @@ export default function Home() {
           >
             {isAuthenticating ? '確認中...' : '参加する'}
           </button>
+
+          {cameFromMain && (
+            <button
+              className="back-button"
+              onClick={() => {
+                setCameFromMain(false);
+                setScreen('main');
+              }}
+            >
+              戻る
+            </button>
+          )}
         </div>
       </div>
     );
@@ -216,6 +230,7 @@ export default function Home() {
           <div className="menu-dropdown">
             <button className="menu-item menu-item-add" onClick={() => {
               setMenuOpen(false);
+              setCameFromMain(true);
               setScreen('cohort');
             }}>
               新しい期に参加する
