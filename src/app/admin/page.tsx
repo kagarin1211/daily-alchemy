@@ -32,8 +32,11 @@ export default function AdminPage() {
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
   const [createdCohort, setCreatedCohort] = useState<Cohort | null>(null);
-  const [activeSection, setActiveSection] = useState<'cohorts' | 'posts'>('cohorts');
+  const [activeSection, setActiveSection] = useState<'cohorts' | 'posts' | 'meditation'>('cohorts');
   const [selectedCohortId, setSelectedCohortId] = useState<string>('');
+  const [meditationUrl, setMeditationUrl] = useState('');
+  const [meditationUrlLoading, setMeditationUrlLoading] = useState(false);
+  const [meditationUrlMessage, setMeditationUrlMessage] = useState<string | null>(null);
 
   const handleLogin = useCallback(async () => {
     try {
@@ -165,10 +168,52 @@ export default function AdminPage() {
     }
   }, [password, fetchPosts, selectedCohortId]);
 
-  const handleSectionChange = useCallback((section: 'cohorts' | 'posts') => {
+  const fetchMeditationUrl = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/meditation-url', {
+        headers: { 'Authorization': `Bearer ${password}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMeditationUrl(data.url || '');
+      }
+    } catch (err) {
+      console.error('Fetch meditation URL error:', err);
+    }
+  }, [password]);
+
+  const handleSaveMeditationUrl = useCallback(async () => {
+    setMeditationUrlLoading(true);
+    setMeditationUrlMessage(null);
+    try {
+      const res = await fetch('/api/admin/meditation-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({ url: meditationUrl }),
+      });
+
+      if (!res.ok) {
+        throw new Error('保存に失敗しました');
+      }
+
+      setMeditationUrlMessage('保存しました');
+    } catch (err) {
+      setMeditationUrlMessage(err instanceof Error ? err.message : '保存に失敗しました');
+    } finally {
+      setMeditationUrlLoading(false);
+    }
+  }, [meditationUrl, password]);
+
+  const handleSectionChange = useCallback((section: 'cohorts' | 'posts' | 'meditation') => {
     setActiveSection(section);
     if (section === 'posts') {
       fetchPosts(selectedCohortId || undefined);
+    }
+    if (section === 'meditation') {
+      fetchMeditationUrl();
     }
   }, [fetchPosts, selectedCohortId]);
 
@@ -226,6 +271,12 @@ export default function AdminPage() {
           onClick={() => handleSectionChange('posts')}
         >
           投稿管理
+        </button>
+        <button
+          className={`tab-button ${activeSection === 'meditation' ? 'active' : ''}`}
+          onClick={() => handleSectionChange('meditation')}
+        >
+          音声ダウンロード設定
         </button>
       </nav>
 
@@ -414,6 +465,46 @@ export default function AdminPage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeSection === 'meditation' && (
+        <div className="form-card">
+          <h3 style={{ fontSize: 16, marginBottom: 12 }}>音声ダウンロードURL設定</h3>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            ギガファイル便などの外部ファイル共有サービスのURLを設定してください。<br />
+            ダウンロードボタンを押すと、このURLが外部ブラウザで開かれます。
+          </p>
+          <div className="form-group">
+            <label className="form-label" htmlFor="meditationUrl">
+              ダウンロードURL
+            </label>
+            <input
+              type="text"
+              id="meditationUrl"
+              className="form-text-input"
+              placeholder="https://example.com/download-link"
+              value={meditationUrl}
+              onChange={(e) => setMeditationUrl(e.target.value)}
+            />
+          </div>
+          <button
+            className="submit-button"
+            onClick={handleSaveMeditationUrl}
+            disabled={meditationUrlLoading}
+          >
+            {meditationUrlLoading ? '保存中...' : '保存'}
+          </button>
+          {meditationUrlMessage && (
+            <div style={{
+              marginTop: 12,
+              fontSize: 13,
+              color: meditationUrlMessage.includes('失敗') ? '#c44' : '#2e7d32',
+              textAlign: 'center',
+            }}>
+              {meditationUrlMessage}
             </div>
           )}
         </div>

@@ -12,6 +12,18 @@ export default function MeditationPlayer() {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/meditation-url')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.url) {
+          setDownloadUrl(data.url);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -81,9 +93,13 @@ export default function MeditationPlayer() {
   };
 
   const handleDownload = useCallback(() => {
-    if (!audioUrl) return;
-    window.location.href = audioUrl;
-  }, [audioUrl]);
+    if (!downloadUrl) return;
+    if (liff.isInClient()) {
+      liff.openWindow({ url: downloadUrl, external: true });
+    } else {
+      window.open(downloadUrl, '_blank');
+    }
+  }, [downloadUrl]);
 
   return (
     <div className="meditation-player">
@@ -135,7 +151,12 @@ export default function MeditationPlayer() {
       </button>
 
       <div className="meditation-actions">
-        <button className="meditation-action-btn" onClick={handleDownload}>
+        <button
+          className="meditation-action-btn"
+          onClick={handleDownload}
+          disabled={!downloadUrl}
+          style={{ opacity: downloadUrl ? 1 : 0.5 }}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -143,6 +164,11 @@ export default function MeditationPlayer() {
           </svg>
           ダウンロード
         </button>
+        {!downloadUrl && (
+          <p className="meditation-hint" style={{ marginTop: 4, textAlign: 'center' }}>
+            準備中です
+          </p>
+        )}
       </div>
     </div>
   );
