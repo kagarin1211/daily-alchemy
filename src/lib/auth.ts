@@ -1,23 +1,39 @@
-const COHORT_STORAGE_KEY = 'daily_alchemy_cohort_id';
-const COHORT_PASSCODE_KEY = 'daily_alchemy_cohort_passcode';
+interface StoredCohort {
+  id: string;
+  name: string;
+  code: string;
+  passcode: string;
+}
 
-export function getCohortFromStorage(): { id: string | null; passcode: string | null } {
-  if (typeof window === 'undefined') {
-    return { id: null, passcode: null };
+const COHORTS_STORAGE_KEY = 'daily_alchemy_cohorts';
+const ACTIVE_COHORT_KEY = 'daily_alchemy_active_cohort_id';
+
+export function getStoredCohorts(): StoredCohort[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(COHORTS_STORAGE_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function addStoredCohort(cohort: StoredCohort): void {
+  const cohorts = getStoredCohorts();
+  if (!cohorts.find(c => c.id === cohort.id)) {
+    cohorts.push(cohort);
+    localStorage.setItem(COHORTS_STORAGE_KEY, JSON.stringify(cohorts));
   }
-  const id = localStorage.getItem(COHORT_STORAGE_KEY);
-  const passcode = localStorage.getItem(COHORT_PASSCODE_KEY);
-  return { id, passcode };
+  localStorage.setItem(ACTIVE_COHORT_KEY, cohort.id);
 }
 
-export function setCohortToStorage(id: string, passcode: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(COHORT_STORAGE_KEY, id);
-  localStorage.setItem(COHORT_PASSCODE_KEY, passcode);
+export function getActiveCohortId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(ACTIVE_COHORT_KEY);
 }
 
-export function clearCohortStorage(): void {
+export function setActiveCohortId(id: string): void {
+  localStorage.setItem(ACTIVE_COHORT_KEY, id);
+}
+
+export function clearAllCohorts(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(COHORT_STORAGE_KEY);
-  localStorage.removeItem(COHORT_PASSCODE_KEY);
+  localStorage.removeItem(COHORTS_STORAGE_KEY);
+  localStorage.removeItem(ACTIVE_COHORT_KEY);
 }

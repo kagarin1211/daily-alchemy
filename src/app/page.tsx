@@ -4,20 +4,35 @@ import { useEffect, useState, useCallback } from 'react';
 import liff from '@line/liff';
 import TraceForm from '@/components/TraceForm';
 import TraceList from '@/components/TraceList';
-import { getCohortFromStorage, setCohortToStorage, clearCohortStorage } from '@/lib/auth';
+import {
+  getStoredCohorts,
+  addStoredCohort,
+  getActiveCohortId,
+  setActiveCohortId,
+  clearAllCohorts,
+} from '@/lib/auth';
 
 type Tab = 'write' | 'read';
 type Screen = 'cohort' | 'main';
+
+interface StoredCohort {
+  id: string;
+  name: string;
+  code: string;
+  passcode: string;
+}
 
 export default function Home() {
   const [liffReady, setLiffReady] = useState(false);
   const [screen, setScreen] = useState<Screen>('cohort');
   const [cohortId, setCohortId] = useState<string | null>(null);
   const [cohortName, setCohortName] = useState<string>('');
+  const [storedCohorts, setStoredCohorts] = useState<StoredCohort[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('write');
+  const [activeTab, setActiveTab] = useState<Tab>('read');
   const [liffError, setLiffError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,10 +46,17 @@ export default function Home() {
       .init({ liffId })
       .then(() => {
         setLiffReady(true);
-        const { id } = getCohortFromStorage();
-        if (id) {
-          setCohortId(id);
-          setScreen('main');
+        const cohorts = getStoredCohorts();
+        setStoredCohorts(cohorts);
+
+        if (cohorts.length > 0) {
+          const activeId = getActiveCohortId();
+          const active = activeId ? cohorts.find(c => c.id === activeId) : cohorts[0];
+          if (active) {
+            setCohortId(active.id);
+            setCohortName(active.name);
+            setScreen('main');
+          }
         }
       })
       .catch((err: Error) => {
@@ -65,10 +87,19 @@ export default function Home() {
       }
 
       const data = await res.json();
+      const newCohort = {
+        id: data.id,
+        name: data.name,
+        code: data.code,
+        passcode: passcode.trim(),
+      };
+
+      addStoredCohort(newCohort);
+      setStoredCohorts(getStoredCohorts());
       setCohortId(data.id);
       setCohortName(data.name);
-      setCohortToStorage(data.id, passcode.trim());
       setScreen('main');
+      setPasscode('');
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : '認証に失敗しました');
     } finally {
@@ -76,16 +107,25 @@ export default function Home() {
     }
   }, [passcode]);
 
-  const handleTabChange = useCallback((tab: Tab) => {
-    setActiveTab(tab);
+  const handleSwitchCohort = useCallback((cohort: StoredCohort) => {
+    setActiveCohortId(cohort.id);
+    setCohortId(cohort.id);
+    setCohortName(cohort.name);
+    setMenuOpen(false);
   }, []);
 
   const handleLogout = useCallback(() => {
-    clearCohortStorage();
+    clearAllCohorts();
+    setStoredCohorts([]);
     setCohortId(null);
     setCohortName('');
     setPasscode('');
     setScreen('cohort');
+    setMenuOpen(false);
+  }, []);
+
+  const handleTabChange = useCallback((tab: Tab) => {
+    setActiveTab(tab);
   }, []);
 
   if (liffError) {
@@ -157,14 +197,44 @@ export default function Home() {
   return (
     <div className="container">
       <header className="app-header">
-        <h1 className="app-title">Daily Alchemy</h1>
-        <p className="app-subtitle">
-          {cohortName ? `${cohortName} の痕跡` : '日々の痕跡を、静かに置く'}
-        </p>
-        {cohortName && (
-          <button className="logout-button" onClick={handleLogout}>
-            別の期に参加する
+        <div className="header-row">
+          <div>
+            <h1 className="app-title">Daily Alchemy</h1>
+            <p className="app-subtitle">
+              {cohortName ? `${cohortName} の痕跡` : '日々の痕跡を、静かに置く'}
+            </p>
+          </div>
+          <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
           </button>
+        </div>
+
+        {menuOpen && (
+          <div className="menu-dropdown">
+            <div className="menu-title">期を切り替える</div>
+            {storedCohorts.map((cohort) => (
+              <button
+                key={cohort.id}
+                className={`menu-item ${cohort.id === cohortId ? 'active' : ''}`}
+                onClick={() => handleSwitchCohort(cohort)}
+              >
+                {cohort.name}
+              </button>
+            ))}
+            <button className="menu-item menu-item-add" onClick={() => {
+              setMenuOpen(false);
+              setScreen('cohort');
+            }}>
+              + 新しい期に参加
+            </button>
+            <button className="menu-item menu-item-logout" onClick={handleLogout}>
+              参加中の期を解除
+            </button>
+          </div>
         )}
       </header>
 
