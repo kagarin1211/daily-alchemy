@@ -8,7 +8,6 @@ import {
   getStoredCohorts,
   addStoredCohort,
   getActiveCohortId,
-  setActiveCohortId,
   clearAllCohorts,
 } from '@/lib/auth';
 
@@ -107,13 +106,6 @@ export default function Home() {
     }
   }, [passcode]);
 
-  const handleSwitchCohort = useCallback((cohort: StoredCohort) => {
-    setActiveCohortId(cohort.id);
-    setCohortId(cohort.id);
-    setCohortName(cohort.name);
-    setMenuOpen(false);
-  }, []);
-
   const handleLogout = useCallback(() => {
     clearAllCohorts();
     setStoredCohorts([]);
@@ -205,31 +197,28 @@ export default function Home() {
             </p>
           </div>
           <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
+            {menuOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            )}
           </button>
         </div>
 
         {menuOpen && (
           <div className="menu-dropdown">
-            <div className="menu-title">期を切り替える</div>
-            {storedCohorts.map((cohort) => (
-              <button
-                key={cohort.id}
-                className={`menu-item ${cohort.id === cohortId ? 'active' : ''}`}
-                onClick={() => handleSwitchCohort(cohort)}
-              >
-                {cohort.name}
-              </button>
-            ))}
             <button className="menu-item menu-item-add" onClick={() => {
               setMenuOpen(false);
               setScreen('cohort');
             }}>
-              + 新しい期に参加
+              新しい期に参加する
             </button>
             <button className="menu-item menu-item-logout" onClick={handleLogout}>
               参加中の期を解除
