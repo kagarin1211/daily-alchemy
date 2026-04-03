@@ -79,19 +79,24 @@ export default function MeditationPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!audioUrl) return;
-    const a = document.createElement('a');
-    a.href = audioUrl;
-    a.download = '';
-    a.click();
-  }, [audioUrl]);
-
-  const handleOpenInBrowser = useCallback(() => {
-    if (typeof window !== 'undefined') {
+    try {
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${audioTitle}.m4a`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
       window.open(audioUrl, '_blank');
     }
-  }, [audioUrl]);
+  }, [audioUrl, audioTitle]);
 
   return (
     <div className="meditation-player">
@@ -151,19 +156,7 @@ export default function MeditationPlayer() {
           </svg>
           ダウンロード
         </button>
-        <button className="meditation-action-btn" onClick={handleOpenInBrowser}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-          ブラウザで開く
-        </button>
       </div>
-
-      <p className="meditation-hint">
-        ブラウザで開くと、画面をオフにしても再生が続きます
-      </p>
     </div>
   );
 }
