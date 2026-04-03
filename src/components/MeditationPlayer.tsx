@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import liff from '@line/liff';
 
 export default function MeditationPlayer() {
   const audioUrl = process.env.NEXT_PUBLIC_MEDITATION_AUDIO_URL || '';
@@ -79,34 +80,18 @@ export default function MeditationPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
-
-  const handleDownload = useCallback(async () => {
+  const handleDownload = useCallback(() => {
     if (!audioUrl) return;
-    setDownloadStatus('ダウンロード中...');
-    console.log('Download start: audioUrl =', audioUrl);
-    try {
-      const response = await fetch(audioUrl);
-      console.log('Fetch response status:', response.status);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const blob = await response.blob();
-      console.log('Blob size:', blob.size);
-      const url = window.URL.createObjectURL(blob);
+    const fullUrl = `${window.location.origin}${audioUrl}`;
+    if (liff.isInClient()) {
+      liff.openWindow({ url: fullUrl, external: true });
+    } else {
       const a = document.createElement('a');
-      a.href = url;
+      a.href = audioUrl;
       a.download = `${audioTitle}.m4a`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      setDownloadStatus('ダウンロード開始');
-      setTimeout(() => setDownloadStatus(null), 3000);
-    } catch (err) {
-      console.error('Download failed:', err);
-      setDownloadStatus(`エラー: ${err instanceof Error ? err.message : '不明'}`);
-      setTimeout(() => setDownloadStatus(null), 5000);
     }
   }, [audioUrl, audioTitle]);
 
@@ -168,11 +153,6 @@ export default function MeditationPlayer() {
           </svg>
           ダウンロード
         </button>
-        {downloadStatus && (
-          <p className="meditation-hint" style={{ marginTop: 4, textAlign: 'center' }}>
-            {downloadStatus}
-          </p>
-        )}
       </div>
     </div>
   );
