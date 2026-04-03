@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     const digestText = `今日は${postCount}件の痕跡が置かれました。\n必要なときに、静かに見に来てください。`;
 
-    await sendLineDigestMessage('', digestText);
+    await sendLineDigestMessage(digestText);
 
     await supabaseAdmin.from('daily_digest_logs').insert({
       digest_date: todayJST.toISOString().split('T')[0],
