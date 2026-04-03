@@ -292,7 +292,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-input-bg);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--color-text);
   resize: vertical;
@@ -320,7 +320,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-input-bg);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--color-text);
   font-family: inherit;
   transition: border-color 0.2s ease;
@@ -376,7 +376,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--color-text);
   font-family: inherit;
   width: 100%;
