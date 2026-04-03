@@ -123,6 +123,13 @@ body {
   color: var(--color-accent);
 }
 
+.menu-item-meditation {
+  color: var(--color-accent);
+  border-top: 1px solid var(--color-border);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
 .menu-item-logout {
   color: var(--color-text-subtle);
   font-size: 12px;
@@ -615,6 +622,136 @@ body {
   border-radius: var(--radius-sm);
   margin-top: 8px;
   display: block;
+}
+
+/* Meditation Player */
+.meditation-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px;
+}
+
+.meditation-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 20px;
+}
+
+.meditation-title {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--color-text);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.meditation-loading {
+  font-size: 13px;
+  color: var(--color-text-subtle);
+}
+
+.meditation-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 20px;
+}
+
+.meditation-time {
+  font-size: 12px;
+  color: var(--color-text-subtle);
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.meditation-seekbar {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--color-border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.meditation-seekbar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+}
+
+.meditation-play-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 24px;
+}
+
+.meditation-play-btn:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: scale(1.05);
+}
+
+.meditation-play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.meditation-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.meditation-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.meditation-action-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.meditation-hint {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  text-align: center;
+  opacity: 0.7;
 }
 
 /* Loading more */
