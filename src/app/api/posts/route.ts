@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest) {
 
     const { data: existing } = await supabaseAdmin
       .from('posts')
-      .select('author_hash')
+      .select('author_hash, content_text, display_name, image_url')
       .eq('id', post_id)
       .single();
 
@@ -101,9 +101,9 @@ export async function PATCH(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('posts')
       .update({
-        content_text: content_text ?? existing.content_text,
-        display_name: display_name ?? existing.display_name,
-        image_url: image_url ?? existing.image_url,
+        content_text: content_text !== undefined ? content_text : existing.content_text,
+        display_name: display_name !== undefined ? display_name : existing.display_name,
+        image_url: image_url !== undefined ? image_url : existing.image_url,
       })
       .eq('id', post_id)
       .select()
