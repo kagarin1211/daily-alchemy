@@ -248,13 +248,13 @@ export default function AdminPage() {
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="newCode">
-                コード（例: 2026-04）
+                参加用コード（例: 202604）
               </label>
               <input
                 type="text"
                 id="newCode"
                 className="form-text-input"
-                placeholder="2026-04"
+                placeholder="202604"
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value)}
               />
@@ -271,7 +271,7 @@ export default function AdminPage() {
               <div style={{ marginTop: 16, padding: 12, background: '#f0f4e8', borderRadius: 8 }}>
                 <p style={{ fontSize: 14, marginBottom: 4 }}>作成しました！</p>
                 <p style={{ fontSize: 13, color: '#555' }}>
-                  参加用パスコード: <strong>{createdCohort.passcode}</strong>
+                  参加用コード: <strong>{createdCohort.code}</strong>
                 </p>
               </div>
             )}
@@ -301,7 +301,7 @@ export default function AdminPage() {
                   >
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{cohort.name}</div>
                     <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                      コード: {cohort.code} | パスコード: {cohort.passcode}
+                      参加用コード: {cohort.code}
                     </div>
                     <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
                       {cohort.is_active ? '有効' : '無効'}

@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('cohorts')
-      .select('id, name, code, passcode, is_active')
-      .eq('passcode', passcode)
+      .select('id, name, code, is_active')
+      .eq('code', passcode)
       .single();
 
     if (error || !data) {

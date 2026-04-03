@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-function generatePasscode(): string {
-  return Math.random().toString(36).slice(2, 8);
-}
-
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -47,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'name と code は必須です' }, { status: 400 });
     }
 
-    const passcode = generatePasscode();
+    const passcode = code;
 
     const { data, error } = await supabaseAdmin
       .from('cohorts')
