@@ -288,7 +288,7 @@ export default function Home() {
           <div>
             <h1 className="app-title">空の祭壇</h1>
             <p className="app-subtitle">
-              {cohortName ? `${cohortName} の痕跡` : '日々の痕跡を、静かに置く'}
+              {cohortName ? `${cohortName} の祭壇` : '日々の痕跡を、静かに置く'}
             </p>
           </div>
           <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
