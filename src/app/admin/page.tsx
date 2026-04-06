@@ -189,12 +189,13 @@ export default function AdminPage() {
       });
 
       if (!res.ok) {
-        throw new Error('削除に失敗しました');
+        const errData = await res.json();
+        throw new Error(errData.error || '削除に失敗しました');
       }
 
       await fetchCohorts();
     } catch (err) {
-      alert(err instanceof Error ? err.message : '削除に失敗しました');
+      alert(err instanceof Error ? err.message : '削除に失敗しました\n\nこのCohortに関連する投稿があるため削除できない場合があります。\nまず投稿を削除または他のCohortに移動してから再試行してください。');
     }
   }, [password, fetchCohorts]);
 
