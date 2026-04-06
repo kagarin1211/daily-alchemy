@@ -211,7 +211,7 @@ export default function Home() {
     return (
       <div className="container">
         <header className="app-header">
-          <h1 className="app-title">空の祭壇</h1>
+          <h1 className="app-title"><ruby>空<rt>くう</rt></ruby>の祭壇</h1>
           <p className="app-subtitle">日々の痕跡を、静かに置く</p>
         </header>
 
@@ -265,7 +265,7 @@ export default function Home() {
         <header className="app-header">
           <div className="header-row">
             <div>
-              <h1 className="app-title">空の祭壇</h1>
+              <h1 className="app-title"><ruby>空<rt>くう</rt></ruby>の祭壇</h1>
               <p className="app-subtitle">誘導瞑想音声</p>
             </div>
             <button className="menu-button" onClick={closeMeditation}>
@@ -286,7 +286,7 @@ export default function Home() {
       <header className="app-header">
         <div className="header-row">
           <div>
-            <h1 className="app-title">空の祭壇</h1>
+            <h1 className="app-title"><ruby>空<rt>くう</rt></ruby>の祭壇</h1>
             <p className="app-subtitle">
               {cohortName ? `${cohortName} の祭壇` : '日々の痕跡を、静かに置く'}
             </p>

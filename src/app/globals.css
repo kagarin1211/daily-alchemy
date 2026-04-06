@@ -146,6 +146,15 @@ body {
   margin-bottom: 4px;
 }
 
+.app-title ruby {
+  ruby-align: center;
+}
+
+.app-title rt {
+  font-size: 0.5em;
+  letter-spacing: 0.15em;
+}
+
 .app-subtitle {
   font-size: 13px;
   color: var(--color-text-subtle);
