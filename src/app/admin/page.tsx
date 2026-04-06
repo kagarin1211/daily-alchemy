@@ -29,6 +29,23 @@ interface MeditationAudio {
   downloadUrl: string;
 }
 
+type Section = 'cohorts' | 'posts' | 'meditation' | 'digest';
+
+interface DigestMessage {
+  id: string;
+  category: string;
+  message: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  morning_posts: '朝・投稿あり',
+  morning_no_posts: '朝・投稿なし',
+  evening_posts: '夜・投稿あり',
+  evening_no_posts: '夜・投稿なし',
+};
+
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -39,11 +56,16 @@ export default function AdminPage() {
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
   const [createdCohort, setCreatedCohort] = useState<Cohort | null>(null);
-  const [activeSection, setActiveSection] = useState<'cohorts' | 'posts' | 'meditation'>('cohorts');
+  const [activeSection, setActiveSection] = useState<Section>('cohorts');
   const [selectedCohortId, setSelectedCohortId] = useState<string>('');
   const [audios, setAudios] = useState<MeditationAudio[]>([]);
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioMessage, setAudioMessage] = useState<string | null>(null);
+  const [digestMessages, setDigestMessages] = useState<DigestMessage[]>([]);
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestMessage, setDigestMessage] = useState<string | null>(null);
+  const [newDigestCategory, setNewDigestCategory] = useState('morning_posts');
+  const [newDigestMessage, setNewDigestMessage] = useState('');
 
   const handleLogin = useCallback(async () => {
     try {
@@ -258,13 +280,91 @@ export default function AdminPage() {
     setAudios(audios.map(a => a.id === id ? { ...a, [field]: value } : a));
   }, [audios]);
 
-  const handleSectionChange = useCallback((section: 'cohorts' | 'posts' | 'meditation') => {
+  const fetchDigestMessages = useCallback(async () => {
+    setDigestLoading(true);
+    try {
+      const res = await fetch('/api/admin/digest-messages', {
+        headers: { 'Authorization': `Bearer ${password}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDigestMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Fetch digest messages error:', err);
+    } finally {
+      setDigestLoading(false);
+    }
+  }, [password]);
+
+  const handleAddDigestMessage = useCallback(async () => {
+    if (!newDigestMessage.trim()) return;
+    setDigestLoading(true);
+    setDigestMessage(null);
+    try {
+      const res = await fetch('/api/admin/digest-messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({ category: newDigestCategory, message: newDigestMessage }),
+      });
+      if (!res.ok) throw new Error('追加に失敗しました');
+      setNewDigestMessage('');
+      await fetchDigestMessages();
+    } catch (err) {
+      setDigestMessage(err instanceof Error ? err.message : '追加に失敗しました');
+    } finally {
+      setDigestLoading(false);
+    }
+  }, [newDigestCategory, newDigestMessage, password, fetchDigestMessages]);
+
+  const handleToggleDigestMessage = useCallback(async (id: string, currentActive: boolean) => {
+    try {
+      const res = await fetch('/api/admin/digest-messages', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({ id, is_active: !currentActive }),
+      });
+      if (!res.ok) throw new Error('更新に失敗しました');
+      await fetchDigestMessages();
+    } catch (err) {
+      setDigestMessage(err instanceof Error ? err.message : '更新に失敗しました');
+    }
+  }, [password, fetchDigestMessages]);
+
+  const handleDeleteDigestMessage = useCallback(async (id: string) => {
+    if (!confirm('このメッセージを削除しますか？')) return;
+    try {
+      const res = await fetch('/api/admin/digest-messages', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error('削除に失敗しました');
+      await fetchDigestMessages();
+    } catch (err) {
+      setDigestMessage(err instanceof Error ? err.message : '削除に失敗しました');
+    }
+  }, [password, fetchDigestMessages]);
+
+  const handleSectionChange = useCallback((section: Section) => {
     setActiveSection(section);
     if (section === 'posts') {
       fetchPosts(selectedCohortId || undefined);
     }
     if (section === 'meditation') {
       fetchAudios();
+    }
+    if (section === 'digest') {
+      fetchDigestMessages();
     }
   }, [fetchPosts, selectedCohortId]);
 
@@ -328,6 +428,12 @@ export default function AdminPage() {
           onClick={() => handleSectionChange('meditation')}
         >
           音声ダウンロード設定
+        </button>
+        <button
+          className={`tab-button ${activeSection === 'digest' ? 'active' : ''}`}
+          onClick={() => handleSectionChange('digest')}
+        >
+          ダイジェストメッセージ
         </button>
       </nav>
 
@@ -640,6 +746,122 @@ export default function AdminPage() {
               {audioMessage}
             </div>
           )}
+        </div>
+      )}
+
+      {activeSection === 'digest' && (
+        <div className="form-card">
+          <h3 style={{ fontSize: 16, marginBottom: 12 }}>ダイジェストメッセージ設定</h3>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            朝7時と夜22:30に送信するメッセージを管理します。カテゴリごとにメッセージを追加・編集できます。
+          </p>
+
+          <div style={{ marginBottom: 20, padding: 16, border: '1px solid #e8e4dd', borderRadius: 8, background: '#faf9f7' }}>
+            <h4 style={{ fontSize: 14, marginBottom: 12 }}>新しいメッセージを追加</h4>
+            <div className="form-group">
+              <label className="form-label">カテゴリ</label>
+              <select
+                className="form-text-input"
+                value={newDigestCategory}
+                onChange={(e) => setNewDigestCategory(e.target.value)}
+              >
+                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">メッセージ</label>
+              <textarea
+                className="form-text-input"
+                rows={2}
+                placeholder="メッセージを入力"
+                value={newDigestMessage}
+                onChange={(e) => setNewDigestMessage(e.target.value)}
+              />
+            </div>
+            <button
+              className="submit-button"
+              onClick={handleAddDigestMessage}
+              disabled={digestLoading}
+              style={{ width: 'auto', padding: '8px 20px' }}
+            >
+              追加
+            </button>
+          </div>
+
+          {digestLoading && <p style={{ fontSize: 13, color: '#888', textAlign: 'center' }}>読み込み中...</p>}
+
+          {digestMessage && (
+            <div style={{
+              marginBottom: 12,
+              fontSize: 13,
+              color: digestMessage.includes('失敗') ? '#c44' : '#2e7d32',
+              textAlign: 'center',
+            }}>
+              {digestMessage}
+            </div>
+          )}
+
+          {Object.entries(CATEGORY_LABELS).map(([categoryKey, categoryLabel]) => {
+            const messages = digestMessages.filter(m => m.category === categoryKey);
+            if (messages.length === 0) return null;
+            return (
+              <div key={categoryKey} style={{ marginBottom: 20 }}>
+                <h4 style={{ fontSize: 14, marginBottom: 8, color: '#888' }}>{categoryLabel} ({messages.length}件)</h4>
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    style={{
+                      padding: 12,
+                      border: '1px solid #e8e4dd',
+                      borderRadius: 8,
+                      marginBottom: 8,
+                      background: msg.is_active ? '#fff' : '#f5f5f5',
+                      opacity: msg.is_active ? 1 : 0.6,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
+                      {msg.message}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          border: '1px solid #888',
+                          borderRadius: 4,
+                          background: '#fff',
+                          color: '#555',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleToggleDigestMessage(msg.id, msg.is_active)}
+                      >
+                        {msg.is_active ? '無効にする' : '有効にする'}
+                      </button>
+                      <button
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          border: '1px solid #c44',
+                          borderRadius: 4,
+                          background: '#fff',
+                          color: '#c44',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleDeleteDigestMessage(msg.id)}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
