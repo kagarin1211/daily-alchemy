@@ -2,22 +2,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendLineDigestMessage } from '@/lib/line';
 
-const morningMessages = [
-  '新しい一日が始まりました。\n必要なときに、静かに見に来てください。',
-  '朝の静けさが訪れました。\nそっと痕跡を覗いてみてください。',
-  '今日も、あなたのペースで。\nいつでも待っています。',
-  '穏やかな朝です。\nふと立ち寄ってみたくなる場所です。',
-  '今日という日も、そっと置いていきましょう。',
-  '深呼吸を一つ。今日もゆっくり始めましょう。',
+// 朝・投稿あり
+const morningWithPosts = [
+  'いくつかの声が、静かに置かれています。',
+  '今日も、誰かの痕跡が待っています。',
+  '新しい声が生まれました。あなたのペースで訪れてみてください。',
+  '祭壇に、いくつかの灯りがともっています。',
+  'そっと置かれた言葉たちが、あなたを待っています。',
 ];
 
-const eveningMessages = [
-  '今日も一日お疲れさまでした。\n必要なときに、静かに見に来てください。',
-  '夜の静けさが訪れました。\nそっと痕跡を覗いてみてください。',
-  '一日の終わりに、あなたの痕跡がここにあります。',
-  'お疲れさまでした。\nふと立ち寄ってみたくなる場所です。',
-  '今日も、あなたのペースで過ごせた一日でしたように。',
-  '深呼吸を一つ。今日もゆっくり終わりにしましょう。',
+// 朝・投稿なし
+const morningNoPosts = [
+  'そっと置かれたがっている声が、もしあれば歓迎しています。',
+  'まだ静かな祭壇です。あなたの声を待っています。',
+  '何もないからこそ、そっと何かを置いてみませんか。',
+  '今日のあなたの痕跡を、ここに預けてみませんか。',
+  '空の祭壇が、あなたの言葉を静かに待っています。',
+];
+
+// 夜・投稿あり
+const eveningWithPosts = [
+  '今日もいくつかの声が響きました。お疲れさまでした。',
+  '置かれた痕跡たちが、今日一日を優しく包んでいます。',
+  '今日の終わりにも、誰かの声が静かに残っています。',
+  '祭壇には、今日の温もりが残っています。ゆっくり休んでください。',
+  'いくつかの言葉が、今日の日を静かに祝っています。',
+];
+
+// 夜・投稿なし
+const eveningNoPosts = [
+  '今日も静かな一日でした。もし何かあれば、そっと置いてください。',
+  '何も置かれなかった日でも、それはそれで大切な一日です。',
+  '祭壇は静かなままです。あなたの声をいつでも待っています。',
+  '今日一日、お疲れさまでした。ふと何かを思い出したら、ここに置いてみてください。',
+  '何もなくても、あなたの存在はここにあります。ゆっくり休んでください。',
 ];
 
 function getRandomMessage(messages: string[]): string {
@@ -71,21 +89,18 @@ export async function POST(request: NextRequest) {
       }
 
       const postCount = count || 0;
+      results.push({ name: cohort.name, count: postCount });
 
-      if (postCount > 0) {
-        results.push({ name: cohort.name, count: postCount });
-
-        const message = period === 'evening'
-          ? getRandomMessage(eveningMessages)
-          : getRandomMessage(morningMessages);
-
-        const digestText = `【${cohort.name}】\n${message}\n\n${liffUrl}`;
-        await sendLineDigestMessage(digestText);
+      let messagePool: string[];
+      if (period === 'evening') {
+        messagePool = postCount > 0 ? eveningWithPosts : eveningNoPosts;
+      } else {
+        messagePool = postCount > 0 ? morningWithPosts : morningNoPosts;
       }
-    }
 
-    if (results.length === 0) {
-      return NextResponse.json({ message: 'No posts today', sent: false });
+      const message = getRandomMessage(messagePool);
+      const digestText = `【${cohort.name}】\n${message}\n\n${liffUrl}`;
+      await sendLineDigestMessage(digestText);
     }
 
     await supabaseAdmin.from('daily_digest_logs').insert({
