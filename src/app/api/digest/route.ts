@@ -42,7 +42,7 @@ function getRandomMessage(messages: string[]): string {
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-export async function POST(request: NextRequest) {
+async function handleDigest(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
@@ -115,11 +115,19 @@ export async function POST(request: NextRequest) {
       cohorts: results,
       sent: true,
     });
-    } catch (err) {
+  } catch (err) {
     console.error('Digest error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'ダイジェスト送信に失敗しました', stack: err instanceof Error ? err.stack : undefined },
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  return handleDigest(request);
+}
+
+export async function GET(request: NextRequest) {
+  return handleDigest(request);
 }
