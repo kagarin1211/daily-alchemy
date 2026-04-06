@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendLineDigestMessage } from '@/lib/line';
 
+const morningMessages = [
+  '新しい一日が始まりました。\n必要なときに、静かに見に来てください。',
+  '朝の静けさが訪れました。\nそっと痕跡を覗いてみてください。',
+  '今日も、あなたのペースで。\nいつでも待っています。',
+  '穏やかな朝です。\nふと立ち寄ってみたくなる場所です。',
+  '今日という日も、そっと置いていきましょう。',
+  '深呼吸を一つ。今日もゆっくり始めましょう。',
+];
+
+const eveningMessages = [
+  '今日も一日お疲れさまでした。\n必要なときに、静かに見に来てください。',
+  '夜の静けさが訪れました。\nそっと痕跡を覗いてみてください。',
+  '一日の終わりに、あなたの痕跡がここにあります。',
+  'お疲れさまでした。\nふと立ち寄ってみたくなる場所です。',
+  '今日も、あなたのペースで過ごせた一日でしたように。',
+  '深呼吸を一つ。今日もゆっくり終わりにしましょう。',
+];
+
+function getRandomMessage(messages: string[]): string {
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -53,12 +75,11 @@ export async function POST(request: NextRequest) {
       if (postCount > 0) {
         results.push({ name: cohort.name, count: postCount });
 
-        let digestText: string;
-        if (period === 'evening') {
-          digestText = `【${cohort.name}】\n今日も一日お疲れさまでした。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
-        } else {
-          digestText = `【${cohort.name}】\n新しい一日が始まりました。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
-        }
+        const message = period === 'evening'
+          ? getRandomMessage(eveningMessages)
+          : getRandomMessage(morningMessages);
+
+        const digestText = `【${cohort.name}】\n${message}\n\n${liffUrl}`;
         await sendLineDigestMessage(digestText);
       }
     }
