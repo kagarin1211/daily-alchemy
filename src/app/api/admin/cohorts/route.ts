@@ -67,3 +67,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (authHeader !== `Bearer ${adminPassword}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { cohort_id } = body;
+
+    if (!cohort_id) {
+      return NextResponse.json({ error: 'cohort_id は必須です' }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('cohorts')
+      .delete()
+      .eq('id', cohort_id);
+
+    if (error) {
+      console.error('Delete cohort error:', error);
+      return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '削除しました' });
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
+  }
+}

@@ -175,6 +175,29 @@ export default function AdminPage() {
     }
   }, [password, fetchPosts, selectedCohortId]);
 
+  const handleDeleteCohort = useCallback(async (cohortId: string) => {
+    if (!confirm('このCohortを完全に削除しますか？\nこの操作は元に戻せません。')) return;
+
+    try {
+      const res = await fetch('/api/admin/cohorts', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({ cohort_id: cohortId }),
+      });
+
+      if (!res.ok) {
+        throw new Error('削除に失敗しました');
+      }
+
+      await fetchCohorts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '削除に失敗しました');
+    }
+  }, [password, fetchCohorts]);
+
   const fetchAudios = useCallback(async () => {
     setAudioLoading(true);
     try {
@@ -377,12 +400,31 @@ export default function AdminPage() {
                       background: cohort.is_active ? '#fff' : '#f5f5f5',
                     }}
                   >
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{cohort.name}</div>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                      参加用コード: {cohort.code}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
-                      {cohort.is_active ? '有効' : '無効'}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{cohort.name}</div>
+                        <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                          参加用コード: {cohort.code}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
+                          {cohort.is_active ? '有効' : '無効'}
+                        </div>
+                      </div>
+                      <button
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          border: '1px solid #c44',
+                          borderRadius: 4,
+                          background: '#fff',
+                          color: '#c44',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                        onClick={() => handleDeleteCohort(cohort.id)}
+                      >
+                        削除
+                      </button>
                     </div>
                   </div>
                 ))}
