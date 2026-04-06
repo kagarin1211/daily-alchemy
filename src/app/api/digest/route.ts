@@ -11,6 +11,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'morning';
+
     const todayJST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
     todayJST.setHours(0, 0, 0, 0);
     const tomorrowJST = new Date(todayJST);
@@ -50,7 +53,12 @@ export async function POST(request: NextRequest) {
       if (postCount > 0) {
         results.push({ name: cohort.name, count: postCount });
 
-        const digestText = `【${cohort.name}】\n今日は${postCount}件の痕跡が置かれました。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
+        let digestText: string;
+        if (period === 'evening') {
+          digestText = `【${cohort.name}】\n今日も一日お疲れさまでした。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
+        } else {
+          digestText = `【${cohort.name}】\n新しい一日が始まりました。\n必要なときに、静かに見に来てください。\n\n${liffUrl}`;
+        }
         await sendLineDigestMessage(digestText);
       }
     }
@@ -67,6 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Digest sent',
+      period,
       cohorts: results,
       sent: true,
     });
