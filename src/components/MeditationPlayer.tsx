@@ -169,7 +169,14 @@ export default function MeditationPlayer() {
       </div>
 
       {isLoading && <p className="meditation-loading">音声を読み込み中...</p>}
-      {error && <p className="meditation-loading" style={{ color: '#c44' }}>{error}</p>}
+      {error && (
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <p className="meditation-loading" style={{ color: '#c44', marginBottom: 8 }}>{error}</p>
+          <p className="meditation-hint">
+            開き直してください
+          </p>
+        </div>
+      )}
 
       <audio ref={audioRef} src={currentAudio.audioUrl} preload="metadata" />
 
