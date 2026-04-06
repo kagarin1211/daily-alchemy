@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const validIds = (data || []).map((c: { id: string }) => c.id);
 
-    return NextResponse.json({ valid_cohorts: data || [], valid_ids });
+    return NextResponse.json({ valid_cohorts: data || [], valid_ids: validIds });
   } catch (err) {
     console.error('Unexpected error:', err);
     return NextResponse.json({ valid_ids: [] });
