@@ -70,9 +70,10 @@ async function handleDigest(request: NextRequest) {
     }
 
     const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-    const liffUrl = liffId ? `https://liff.line.me/${liffId}` : '';
+    const liffUrl = liffId ? `https://liff.line.me/${liffId}/` : '';
 
     const results: { name: string; count: number }[] = [];
+    let hasPosts = false;
 
     for (const cohort of cohorts) {
       const { count, error: countError } = await supabaseAdmin
@@ -90,18 +91,16 @@ async function handleDigest(request: NextRequest) {
 
       const postCount = count || 0;
       results.push({ name: cohort.name, count: postCount });
-
-      let messagePool: string[];
-      if (period === 'evening') {
-        messagePool = postCount > 0 ? eveningWithPosts : eveningNoPosts;
-      } else {
-        messagePool = postCount > 0 ? morningWithPosts : morningNoPosts;
-      }
-
-      const message = getRandomMessage(messagePool);
-      const digestText = `【${cohort.name}】\n${message}\n\n${liffUrl}`;
-      await sendLineDigestMessage(digestText);
+      if (postCount > 0) hasPosts = true;
     }
+
+    const messagePool = period === 'evening'
+      ? (hasPosts ? eveningWithPosts : eveningNoPosts)
+      : (hasPosts ? morningWithPosts : morningNoPosts);
+
+    const message = getRandomMessage(messagePool);
+    const digestText = `${message}\n\n${liffUrl}`;
+    await sendLineDigestMessage(digestText);
 
     await supabaseAdmin.from('daily_digest_logs').insert({
       digest_date: todayJST.toISOString().split('T')[0],
