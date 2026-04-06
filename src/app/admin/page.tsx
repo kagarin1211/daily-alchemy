@@ -66,6 +66,9 @@ export default function AdminPage() {
   const [digestMessage, setDigestMessage] = useState<string | null>(null);
   const [newDigestCategory, setNewDigestCategory] = useState('morning_posts');
   const [newDigestMessage, setNewDigestMessage] = useState('');
+  const [editingDigestId, setEditingDigestId] = useState<string | null>(null);
+  const [editingDigestText, setEditingDigestText] = useState('');
+  const [editingDigestCategory, setEditingDigestCategory] = useState('');
 
   const handleLogin = useCallback(async () => {
     try {
@@ -336,6 +339,45 @@ export default function AdminPage() {
       setDigestMessage(err instanceof Error ? err.message : '更新に失敗しました');
     }
   }, [password, fetchDigestMessages]);
+
+  const handleStartEditDigest = useCallback((msg: DigestMessage) => {
+    setEditingDigestId(msg.id);
+    setEditingDigestText(msg.message);
+    setEditingDigestCategory(msg.category);
+  }, []);
+
+  const handleCancelEditDigest = useCallback(() => {
+    setEditingDigestId(null);
+    setEditingDigestText('');
+    setEditingDigestCategory('');
+  }, []);
+
+  const handleSaveEditDigest = useCallback(async () => {
+    if (!editingDigestId || !editingDigestText.trim()) return;
+    setDigestLoading(true);
+    setDigestMessage(null);
+    try {
+      const res = await fetch('/api/admin/digest-messages', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${password}`,
+        },
+        body: JSON.stringify({
+          id: editingDigestId,
+          message: editingDigestText,
+          category: editingDigestCategory,
+        }),
+      });
+      if (!res.ok) throw new Error('更新に失敗しました');
+      handleCancelEditDigest();
+      await fetchDigestMessages();
+    } catch (err) {
+      setDigestMessage(err instanceof Error ? err.message : '更新に失敗しました');
+    } finally {
+      setDigestLoading(false);
+    }
+  }, [editingDigestId, editingDigestText, editingDigestCategory, password, fetchDigestMessages, handleCancelEditDigest]);
 
   const handleDeleteDigestMessage = useCallback(async (id: string) => {
     if (!confirm('このメッセージを削除しますか？')) return;
@@ -819,44 +861,115 @@ export default function AdminPage() {
                       marginBottom: 8,
                       background: msg.is_active ? '#fff' : '#f5f5f5',
                       opacity: msg.is_active ? 1 : 0.6,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
                     }}
                   >
-                    <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
-                      {msg.message}
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      <button
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          border: '1px solid #888',
-                          borderRadius: 4,
-                          background: '#fff',
-                          color: '#555',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => handleToggleDigestMessage(msg.id, msg.is_active)}
-                      >
-                        {msg.is_active ? '無効にする' : '有効にする'}
-                      </button>
-                      <button
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: 11,
-                          border: '1px solid #c44',
-                          borderRadius: 4,
-                          background: '#fff',
-                          color: '#c44',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => handleDeleteDigestMessage(msg.id)}
-                      >
-                        削除
-                      </button>
-                    </div>
+                    {editingDigestId === msg.id ? (
+                      <div>
+                        <div className="form-group" style={{ marginBottom: 8 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>カテゴリ</label>
+                          <select
+                            className="form-text-input"
+                            style={{ fontSize: 13, padding: '6px 8px' }}
+                            value={editingDigestCategory}
+                            onChange={(e) => setEditingDigestCategory(e.target.value)}
+                          >
+                            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                              <option key={key} value={key}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 8 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>メッセージ</label>
+                          <textarea
+                            className="form-text-input"
+                            style={{ fontSize: 14, padding: '6px 8px' }}
+                            rows={2}
+                            value={editingDigestText}
+                            onChange={(e) => setEditingDigestText(e.target.value)}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              border: '1px solid #2e7d32',
+                              borderRadius: 4,
+                              background: '#fff',
+                              color: '#2e7d32',
+                              cursor: 'pointer',
+                            }}
+                            onClick={handleSaveEditDigest}
+                          >
+                            保存
+                          </button>
+                          <button
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              border: '1px solid #888',
+                              borderRadius: 4,
+                              background: '#fff',
+                              color: '#555',
+                              cursor: 'pointer',
+                            }}
+                            onClick={handleCancelEditDigest}
+                          >
+                            キャンセル
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
+                          {msg.message}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          <button
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              border: '1px solid #2e7d32',
+                              borderRadius: 4,
+                              background: '#fff',
+                              color: '#2e7d32',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => handleStartEditDigest(msg)}
+                          >
+                            編集
+                          </button>
+                          <button
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              border: '1px solid #888',
+                              borderRadius: 4,
+                              background: '#fff',
+                              color: '#555',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => handleToggleDigestMessage(msg.id, msg.is_active)}
+                          >
+                            {msg.is_active ? '無効にする' : '有効にする'}
+                          </button>
+                          <button
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              border: '1px solid #c44',
+                              borderRadius: 4,
+                              background: '#fff',
+                              color: '#c44',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => handleDeleteDigestMessage(msg.id)}
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
