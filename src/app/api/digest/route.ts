@@ -115,10 +115,10 @@ export async function POST(request: NextRequest) {
       cohorts: results,
       sent: true,
     });
-  } catch (err) {
+    } catch (err) {
     console.error('Digest error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'ダイジェスト送信に失敗しました' },
+      { error: err instanceof Error ? err.message : 'ダイジェスト送信に失敗しました', stack: err instanceof Error ? err.stack : undefined },
       { status: 500 }
     );
   }
