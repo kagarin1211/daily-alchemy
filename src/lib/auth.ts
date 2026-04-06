@@ -32,6 +32,14 @@ export function setActiveCohortId(id: string): void {
   localStorage.setItem(ACTIVE_COHORT_KEY, id);
 }
 
+export function removeStoredCohort(id: string): void {
+  const cohorts = getStoredCohorts().filter(c => c.id !== id);
+  localStorage.setItem(COHORTS_STORAGE_KEY, JSON.stringify(cohorts));
+  if (getActiveCohortId() === id) {
+    localStorage.removeItem(ACTIVE_COHORT_KEY);
+  }
+}
+
 export function clearAllCohorts(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(COHORTS_STORAGE_KEY);

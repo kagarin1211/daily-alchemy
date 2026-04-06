@@ -10,6 +10,7 @@ import {
   addStoredCohort,
   getActiveCohortId,
   setActiveCohortId,
+  removeStoredCohort,
 } from '@/lib/auth';
 import { hashUserId } from '@/lib/utils';
 
@@ -65,11 +66,32 @@ export default function Home() {
         }
 
         const cohorts = getStoredCohorts();
-        setStoredCohorts(cohorts);
 
-        if (cohorts.length > 0) {
+        const cohortIds = cohorts.map(c => c.id);
+        let validCohorts = cohorts;
+        if (cohortIds.length > 0) {
+          try {
+            const res = await fetch('/api/cohorts/validate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cohort_ids: cohortIds }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              validCohorts = data.valid_cohorts || [];
+              const removedIds = cohortIds.filter(id => !data.valid_ids.includes(id));
+              removedIds.forEach(id => removeStoredCohort(id));
+            }
+          } catch (err) {
+            console.error('Cohort validation error:', err);
+          }
+        }
+
+        setStoredCohorts(validCohorts);
+
+        if (validCohorts.length > 0) {
           const activeId = getActiveCohortId();
-          const active = activeId ? cohorts.find(c => c.id === activeId) : cohorts[0];
+          const active = activeId ? validCohorts.find(c => c.id === activeId) : validCohorts[0];
           if (active) {
             setCohortId(active.id);
             setCohortName(active.name);
