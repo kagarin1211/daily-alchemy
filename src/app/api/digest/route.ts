@@ -15,13 +15,26 @@ async function handleDigest(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'morning';
+    const nowJST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    const hour = nowJST.getHours();
+    const isMorningCron = hour < 12;
 
-    const todayJST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+    const todayJST = new Date(nowJST);
     todayJST.setHours(0, 0, 0, 0);
     const tomorrowJST = new Date(todayJST);
     tomorrowJST.setDate(tomorrowJST.getDate() + 1);
+
+    const dayOfYear = Math.floor((todayJST.getTime() - new Date(todayJST.getFullYear(), 0, 0).getTime()) / 86400000);
+    const shouldSendMorning = dayOfYear % 2 === 0;
+
+    if (isMorningCron && !shouldSendMorning) {
+      return NextResponse.json({ message: 'Skipped: today is evening day' });
+    }
+    if (!isMorningCron && shouldSendMorning) {
+      return NextResponse.json({ message: 'Skipped: today is morning day' });
+    }
+
+    const period = shouldSendMorning ? 'morning' : 'evening';
 
     const { data: cohorts, error: cohortsError } = await supabaseAdmin
       .from('cohorts')
