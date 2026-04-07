@@ -15,10 +15,13 @@ async function handleDigest(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
+
     const nowJST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
     const hour = nowJST.getHours();
 
-    if (hour >= 12) {
+    if (!force && hour >= 12) {
       return NextResponse.json({ message: 'Skipped: not evening cron' });
     }
 
