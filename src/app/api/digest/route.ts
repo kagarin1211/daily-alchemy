@@ -17,24 +17,15 @@ async function handleDigest(request: NextRequest) {
 
     const nowJST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
     const hour = nowJST.getHours();
-    const isMorningCron = hour < 12;
+
+    if (hour >= 12) {
+      return NextResponse.json({ message: 'Skipped: not evening cron' });
+    }
 
     const todayJST = new Date(nowJST);
     todayJST.setHours(0, 0, 0, 0);
     const tomorrowJST = new Date(todayJST);
     tomorrowJST.setDate(tomorrowJST.getDate() + 1);
-
-    const dayOfYear = Math.floor((todayJST.getTime() - new Date(todayJST.getFullYear(), 0, 0).getTime()) / 86400000);
-    const shouldSendMorning = dayOfYear % 2 === 0;
-
-    if (isMorningCron && !shouldSendMorning) {
-      return NextResponse.json({ message: 'Skipped: today is evening day' });
-    }
-    if (!isMorningCron && shouldSendMorning) {
-      return NextResponse.json({ message: 'Skipped: today is morning day' });
-    }
-
-    const period = shouldSendMorning ? 'morning' : 'evening';
 
     const { data: cohorts, error: cohortsError } = await supabaseAdmin
       .from('cohorts')
@@ -50,8 +41,6 @@ async function handleDigest(request: NextRequest) {
     const liffUrl = liffId ? `https://liff.line.me/${liffId}/` : '';
 
     const results: { name: string; count: number }[] = [];
-    let hasPosts = false;
-
     for (const cohort of cohorts) {
       const { count, error: countError } = await supabaseAdmin
         .from('posts')
@@ -65,29 +54,43 @@ async function handleDigest(request: NextRequest) {
         console.error(`Count error for ${cohort.name}:`, countError);
         continue;
       }
-
-      const postCount = count || 0;
-      results.push({ name: cohort.name, count: postCount });
-      if (postCount > 0) hasPosts = true;
+      results.push({ name: cohort.name, count: count || 0 });
     }
 
-    const category = period === 'evening'
-      ? (hasPosts ? 'evening_posts' : 'evening_no_posts')
-      : (hasPosts ? 'morning_posts' : 'morning_no_posts');
-
-    const { data: messagesData } = await supabaseAdmin
+    const { data: scheduledMessages } = await supabaseAdmin
       .from('digest_messages')
-      .select('message')
-      .eq('category', category)
-      .eq('is_active', true);
+      .select('id, message')
+      .eq('type', 'scheduled')
+      .eq('is_active', true)
+      .eq('is_sent', false)
+      .order('sort_order', { ascending: true });
 
-    const messages = (messagesData || []).map((m: { message: string }) => m.message);
-    const message = messages.length > 0
-      ? getRandomMessage(messages)
-      : 'お知らせです。';
+    let message: string;
+    let sentMessageId: string | null = null;
+
+    if (scheduledMessages && scheduledMessages.length > 0) {
+      message = scheduledMessages[0].message;
+      sentMessageId = scheduledMessages[0].id;
+    } else {
+      const { data: randomMessages } = await supabaseAdmin
+        .from('digest_messages')
+        .select('message')
+        .eq('type', 'random')
+        .eq('is_active', true);
+
+      const randomList = (randomMessages || []).map((m: { message: string }) => m.message);
+      message = randomList.length > 0 ? getRandomMessage(randomList) : 'お知らせです。';
+    }
 
     const digestText = `${message}\n\n${liffUrl}`;
     await sendLineDigestMessage(digestText);
+
+    if (sentMessageId) {
+      await supabaseAdmin
+        .from('digest_messages')
+        .update({ is_sent: true, updated_at: new Date().toISOString() })
+        .eq('id', sentMessageId);
+    }
 
     await supabaseAdmin.from('daily_digest_logs').insert({
       digest_date: todayJST.toISOString().split('T')[0],
@@ -97,7 +100,7 @@ async function handleDigest(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Digest sent',
-      period,
+      used_scheduled: !!sentMessageId,
       cohorts: results,
       sent: true,
     });

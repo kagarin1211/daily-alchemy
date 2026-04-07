@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('digest_messages')
       .select('*')
-      .order('category', { ascending: true })
-      .order('created_at', { ascending: true });
+      .order('type', { ascending: true })
+      .order('sort_order', { ascending: true });
 
     if (error) {
       console.error('Fetch digest messages error:', error);
@@ -38,15 +38,25 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { category, message } = body;
+    const { type, message, sort_order } = body;
 
-    if (!category || !message) {
-      return NextResponse.json({ error: 'category と message は必須です' }, { status: 400 });
+    if (!type || !message) {
+      return NextResponse.json({ error: 'type と message は必須です' }, { status: 400 });
     }
+
+    const { data: maxOrder } = await supabaseAdmin
+      .from('digest_messages')
+      .select('sort_order')
+      .eq('type', type)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextOrder = maxOrder ? maxOrder.sort_order + 1 : 1;
 
     const { data, error } = await supabaseAdmin
       .from('digest_messages')
-      .insert({ category, message })
+      .insert({ type, message, sort_order: sort_order ?? nextOrder })
       .select()
       .single();
 
@@ -72,7 +82,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, message, is_active, category } = body;
+    const { id, message, is_active, is_sent, type, sort_order } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'id は必須です' }, { status: 400 });
@@ -81,7 +91,9 @@ export async function PATCH(request: NextRequest) {
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (message !== undefined) updateData.message = message;
     if (is_active !== undefined) updateData.is_active = is_active;
-    if (category !== undefined) updateData.category = category;
+    if (is_sent !== undefined) updateData.is_sent = is_sent;
+    if (type !== undefined) updateData.type = type;
+    if (sort_order !== undefined) updateData.sort_order = sort_order;
 
     const { error } = await supabaseAdmin
       .from('digest_messages')
@@ -127,6 +139,36 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ message: '削除しました' });
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (authHeader !== `Bearer ${adminPassword}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { ordered_ids } = body;
+
+    if (!Array.isArray(ordered_ids)) {
+      return NextResponse.json({ error: 'ordered_ids は配列である必要があります' }, { status: 400 });
+    }
+
+    for (let i = 0; i < ordered_ids.length; i++) {
+      await supabaseAdmin
+        .from('digest_messages')
+        .update({ sort_order: i + 1, updated_at: new Date().toISOString() })
+        .eq('id', ordered_ids[i]);
+    }
+
+    return NextResponse.json({ message: '並び順を更新しました' });
   } catch (err) {
     console.error('Unexpected error:', err);
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
