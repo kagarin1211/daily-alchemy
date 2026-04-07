@@ -72,14 +72,50 @@ async function handleDigest(request: NextRequest) {
       message = scheduledMessages[0].message;
       sentMessageId = scheduledMessages[0].id;
     } else {
-      const { data: randomMessages } = await supabaseAdmin
+      const { data: allScheduled } = await supabaseAdmin
         .from('digest_messages')
-        .select('message')
-        .eq('type', 'random')
+        .select('id')
+        .eq('type', 'scheduled')
         .eq('is_active', true);
 
-      const randomList = (randomMessages || []).map((m: { message: string }) => m.message);
-      message = randomList.length > 0 ? getRandomMessage(randomList) : 'お知らせです。';
+      if (allScheduled && allScheduled.length > 0) {
+        await supabaseAdmin
+          .from('digest_messages')
+          .update({ is_sent: false, updated_at: new Date().toISOString() })
+          .eq('type', 'scheduled')
+          .eq('is_active', true);
+
+        const { data: resetMessages } = await supabaseAdmin
+          .from('digest_messages')
+          .select('id, message')
+          .eq('type', 'scheduled')
+          .eq('is_active', true)
+          .eq('is_sent', false)
+          .order('sort_order', { ascending: true });
+
+        if (resetMessages && resetMessages.length > 0) {
+          message = resetMessages[0].message;
+          sentMessageId = resetMessages[0].id;
+        } else {
+          const { data: randomMessages } = await supabaseAdmin
+            .from('digest_messages')
+            .select('message')
+            .eq('type', 'random')
+            .eq('is_active', true);
+
+          const randomList = (randomMessages || []).map((m: { message: string }) => m.message);
+          message = randomList.length > 0 ? getRandomMessage(randomList) : 'お知らせです。';
+        }
+      } else {
+        const { data: randomMessages } = await supabaseAdmin
+          .from('digest_messages')
+          .select('message')
+          .eq('type', 'random')
+          .eq('is_active', true);
+
+        const randomList = (randomMessages || []).map((m: { message: string }) => m.message);
+        message = randomList.length > 0 ? getRandomMessage(randomList) : 'お知らせです。';
+      }
     }
 
     const digestText = `${message}\n\n${liffUrl}`;
