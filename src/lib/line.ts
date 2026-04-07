@@ -1,6 +1,6 @@
 export async function sendLineDigestMessage(text: string) {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  const groupId = process.env.LINE_GROUP_ID;
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim();
+  const groupId = process.env.LINE_GROUP_ID?.trim();
   if (!token) throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
   if (!groupId) throw new Error('LINE_GROUP_ID is not set');
 
