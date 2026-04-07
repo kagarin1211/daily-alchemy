@@ -66,7 +66,7 @@ export default function Home() {
           setAuthorHash(hash);
 
           const context = liff.getContext();
-          if (context.type === 'utou' || context.type === 'room' || context.type === 'group') {
+          if (context && (context.type === 'utou' || context.type === 'room' || context.type === 'group')) {
             setDebugInfo(`groupId: ${context.groupId || 'none'}, type: ${context.type}`);
           }
         }
