@@ -410,7 +410,7 @@ export default function AdminPage() {
   }, [password, fetchDigestMessages]);
 
   const handleMoveUp = useCallback(async (id: string) => {
-    const scheduled = digestMessages.filter(m => m.type === 'scheduled').sort((a, b) => a.sort_order - b.sort_order);
+    const scheduled = digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).sort((a, b) => a.sort_order - b.sort_order);
     const idx = scheduled.findIndex(m => m.id === id);
     if (idx <= 0) return;
     const reordered = [...scheduled];
@@ -430,7 +430,7 @@ export default function AdminPage() {
   }, [digestMessages, password, fetchDigestMessages]);
 
   const handleMoveDown = useCallback(async (id: string) => {
-    const scheduled = digestMessages.filter(m => m.type === 'scheduled').sort((a, b) => a.sort_order - b.sort_order);
+    const scheduled = digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).sort((a, b) => a.sort_order - b.sort_order);
     const idx = scheduled.findIndex(m => m.id === id);
     if (idx < 0 || idx >= scheduled.length - 1) return;
     const reordered = [...scheduled];
@@ -899,12 +899,44 @@ export default function AdminPage() {
           {/* 指定メッセージ */}
           <div style={{ marginBottom: 24 }}>
             <h4 style={{ fontSize: 14, marginBottom: 8, color: '#888' }}>
-              指定メッセージ（送信順）
+              指定メッセージ（送信待ち）
             </h4>
-            <p style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>
-              ↑↓ボタンで並び替え。全て送信されると自動的に最初に戻ります。
-            </p>
-            {digestMessages.filter(m => m.type === 'scheduled').map((msg, idx) => (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontSize: 12, color: '#aaa', margin: 0 }}>
+                上から順に送信されます。
+              </p>
+              <button
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  border: '1px solid #9aaa8a',
+                  borderRadius: 4,
+                  background: '#fff',
+                  color: '#9aaa8a',
+                  cursor: 'pointer',
+                }}
+                onClick={async () => {
+                  if (!confirm('全ての送信済みメッセージを未送信に戻しますか？')) return;
+                  const scheduled = digestMessages.filter(m => m.type === 'scheduled');
+                  for (const msg of scheduled) {
+                    await fetch('/api/admin/digest-messages', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
+                      body: JSON.stringify({ id: msg.id, is_sent: false }),
+                    });
+                  }
+                  await fetchDigestMessages();
+                }}
+              >
+                全て未送信に戻す
+              </button>
+            </div>
+            {digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).length === 0 && (
+              <p style={{ fontSize: 13, color: '#aaa', textAlign: 'center', padding: 16 }}>
+                全てのメッセージを送信済みです。「全て未送信に戻す」ボタンでリセットできます。
+              </p>
+            )}
+            {digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).map((msg, idx) => (
               <div
                 key={msg.id}
                 style={{
@@ -943,15 +975,15 @@ export default function AdminPage() {
                   </button>
                   <button
                     onClick={() => handleMoveDown(msg.id)}
-                    disabled={idx === digestMessages.filter(m => m.type === 'scheduled').length - 1}
+                    disabled={idx === digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).length - 1}
                     style={{
                       width: 28,
                       height: 22,
                       border: '1px solid #ccc',
                       borderRadius: 4,
                       background: '#fff',
-                      color: idx === digestMessages.filter(m => m.type === 'scheduled').length - 1 ? '#ddd' : '#555',
-                      cursor: idx === digestMessages.filter(m => m.type === 'scheduled').length - 1 ? 'default' : 'pointer',
+                      color: idx === digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).length - 1 ? '#ddd' : '#555',
+                      cursor: idx === digestMessages.filter(m => m.type === 'scheduled' && !m.is_sent).length - 1 ? 'default' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1035,6 +1067,52 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+
+          {/* 送信済みメッセージ */}
+          {digestMessages.filter(m => m.type === 'scheduled' && m.is_sent).length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <h4 style={{ fontSize: 14, marginBottom: 8, color: '#aaa' }}>
+                送信済みメッセージ
+              </h4>
+              {digestMessages.filter(m => m.type === 'scheduled' && m.is_sent).map((msg) => (
+                <div
+                  key={msg.id}
+                  style={{
+                    padding: 12,
+                    border: '1px solid #e8e4dd',
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    background: '#f5f5f5',
+                    opacity: 0.7,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ fontSize: 11, color: '#aaa', width: 20, textAlign: 'center', flexShrink: 0 }}>
+                    ✓
+                  </div>
+                  <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6, color: '#888' }}>
+                    {msg.message}
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button
+                      style={{ padding: '4px 8px', fontSize: 11, border: '1px solid #9aaa8a', borderRadius: 4, background: '#fff', color: '#9aaa8a', cursor: 'pointer' }}
+                      onClick={() => handleToggleSent(msg.id, msg.is_sent)}
+                    >
+                      未送信に戻す
+                    </button>
+                    <button
+                      style={{ padding: '4px 8px', fontSize: 11, border: '1px solid #c44', borderRadius: 4, background: '#fff', color: '#c44', cursor: 'pointer' }}
+                      onClick={() => handleDeleteDigestMessage(msg.id)}
+                    >
+                      削除
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* ランダムメッセージ */}
           <div style={{ marginBottom: 16 }}>
