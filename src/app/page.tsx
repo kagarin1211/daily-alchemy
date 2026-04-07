@@ -46,6 +46,7 @@ export default function Home() {
   const [liffError, setLiffError] = useState<string | null>(null);
   const [authorHash, setAuthorHash] = useState<string | null>(null);
   const [editingTrace, setEditingTrace] = useState<EditingTrace | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   useEffect(() => {
     const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
@@ -63,6 +64,11 @@ export default function Home() {
           const profile = await liff.getProfile();
           const hash = await hashUserId(profile.userId);
           setAuthorHash(hash);
+
+          const context = liff.getContext();
+          if (context.type === 'utou' || context.type === 'room' || context.type === 'group') {
+            setDebugInfo(`groupId: ${context.groupId || 'none'}, type: ${context.type}`);
+          }
         }
 
         const cohorts = getStoredCohorts();
@@ -312,6 +318,11 @@ export default function Home() {
             <p className="app-subtitle">
               {cohortName ? `${cohortName} の祭壇` : '日々の痕跡を、静かに置く'}
             </p>
+            {debugInfo && (
+              <p style={{ fontSize: 10, color: '#aaa', marginTop: 4, wordBreak: 'break-all' }}>
+                {debugInfo}
+              </p>
+            )}
           </div>
           <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? (
