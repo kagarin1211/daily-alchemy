@@ -65,6 +65,8 @@ export default function AdminPage() {
   const [editingDigestText, setEditingDigestText] = useState('');
   const [editingDigestType, setEditingDigestType] = useState('');
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [pendingOrder, setPendingOrder] = useState<string[]>([]);
 
   const handleLogin = useCallback(async () => {
     try {
@@ -429,24 +431,40 @@ export default function AdminPage() {
 
   const handleDragStart = useCallback((id: string) => {
     setDraggedId(id);
-  }, []);
+    const scheduled = digestMessages.filter(m => m.type === 'scheduled');
+    setPendingOrder(scheduled.map(m => m.id));
+  }, [digestMessages]);
 
   const handleDragOver = useCallback((e: React.DragEvent, targetId: string) => {
     e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
-    const scheduled = digestMessages.filter(m => m.type === 'scheduled');
-    const draggedIdx = scheduled.findIndex(m => m.id === draggedId);
-    const targetIdx = scheduled.findIndex(m => m.id === targetId);
-    if (draggedIdx < 0 || targetIdx < 0) return;
-    const reordered = [...scheduled];
-    const [removed] = reordered.splice(draggedIdx, 1);
-    reordered.splice(targetIdx, 0, removed);
-    const newOrder = reordered.map(m => m.id);
-    handleReorderScheduled(newOrder);
-  }, [draggedId, digestMessages, handleReorderScheduled]);
+    setDragOverId(targetId);
+  }, []);
+
+  const handleDrop = useCallback((targetId: string) => {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+    const currentOrder = [...pendingOrder];
+    const draggedIdx = currentOrder.indexOf(draggedId);
+    const targetIdx = currentOrder.indexOf(targetId);
+    if (draggedIdx < 0 || targetIdx < 0) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+    const [removed] = currentOrder.splice(draggedIdx, 1);
+    currentOrder.splice(targetIdx, 0, removed);
+    setPendingOrder(currentOrder);
+    handleReorderScheduled(currentOrder);
+    setDraggedId(null);
+    setDragOverId(null);
+  }, [draggedId, pendingOrder, handleReorderScheduled]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedId(null);
+    setDragOverId(null);
   }, []);
 
   const handleSectionChange = useCallback((section: Section) => {
@@ -910,10 +928,11 @@ export default function AdminPage() {
                 draggable
                 onDragStart={() => handleDragStart(msg.id)}
                 onDragOver={(e) => handleDragOver(e, msg.id)}
+                onDrop={() => handleDrop(msg.id)}
                 onDragEnd={handleDragEnd}
                 style={{
                   padding: 12,
-                  border: '1px solid #e8e4dd',
+                  border: dragOverId === msg.id ? '2px solid #b8a88a' : '1px solid #e8e4dd',
                   borderRadius: 8,
                   marginBottom: 8,
                   background: msg.is_active ? (msg.is_sent ? '#f0f0f0' : '#fff') : '#f5f5f5',
