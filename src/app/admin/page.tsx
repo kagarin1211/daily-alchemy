@@ -64,9 +64,6 @@ export default function AdminPage() {
   const [editingDigestId, setEditingDigestId] = useState<string | null>(null);
   const [editingDigestText, setEditingDigestText] = useState('');
   const [editingDigestType, setEditingDigestType] = useState('');
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [pendingOrder, setPendingOrder] = useState<string[]>([]);
 
   const handleLogin = useCallback(async () => {
     try {
@@ -412,14 +409,17 @@ export default function AdminPage() {
     }
   }, [password, fetchDigestMessages]);
 
-  const handleReorderScheduled = useCallback(async (orderedIds: string[]) => {
+  const handleMoveUp = useCallback(async (id: string) => {
+    const scheduled = digestMessages.filter(m => m.type === 'scheduled').sort((a, b) => a.sort_order - b.sort_order);
+    const idx = scheduled.findIndex(m => m.id === id);
+    if (idx <= 0) return;
+    const reordered = [...scheduled];
+    [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
+    const orderedIds = reordered.map(m => m.id);
     try {
       const res = await fetch('/api/admin/digest-messages', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${password}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
         body: JSON.stringify({ ordered_ids: orderedIds }),
       });
       if (!res.ok) throw new Error('並び替えに失敗しました');
@@ -427,47 +427,27 @@ export default function AdminPage() {
     } catch (err) {
       setDigestMessage(err instanceof Error ? err.message : '並び替えに失敗しました');
     }
-  }, [password, fetchDigestMessages]);
+  }, [digestMessages, password, fetchDigestMessages]);
 
-  const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggedId(id);
-    const scheduled = digestMessages.filter(m => m.type === 'scheduled');
-    setPendingOrder(scheduled.map(m => m.id));
-  }, [digestMessages]);
-
-  const handleDragOver = useCallback((e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverId(targetId);
-  }, []);
-
-  const handleDrop = useCallback((targetId: string) => {
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
+  const handleMoveDown = useCallback(async (id: string) => {
+    const scheduled = digestMessages.filter(m => m.type === 'scheduled').sort((a, b) => a.sort_order - b.sort_order);
+    const idx = scheduled.findIndex(m => m.id === id);
+    if (idx < 0 || idx >= scheduled.length - 1) return;
+    const reordered = [...scheduled];
+    [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
+    const orderedIds = reordered.map(m => m.id);
+    try {
+      const res = await fetch('/api/admin/digest-messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
+        body: JSON.stringify({ ordered_ids: orderedIds }),
+      });
+      if (!res.ok) throw new Error('並び替えに失敗しました');
+      await fetchDigestMessages();
+    } catch (err) {
+      setDigestMessage(err instanceof Error ? err.message : '並び替えに失敗しました');
     }
-    const currentOrder = [...pendingOrder];
-    const draggedIdx = currentOrder.indexOf(draggedId);
-    const targetIdx = currentOrder.indexOf(targetId);
-    if (draggedIdx < 0 || targetIdx < 0) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
-    }
-    const [removed] = currentOrder.splice(draggedIdx, 1);
-    currentOrder.splice(targetIdx, 0, removed);
-    setPendingOrder(currentOrder);
-    handleReorderScheduled(currentOrder);
-    setDraggedId(null);
-    setDragOverId(null);
-  }, [draggedId, pendingOrder, handleReorderScheduled]);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggedId(null);
-    setDragOverId(null);
-  }, []);
+  }, [digestMessages, password, fetchDigestMessages]);
 
   const handleSectionChange = useCallback((section: Section) => {
     setActiveSection(section);
@@ -922,14 +902,14 @@ export default function AdminPage() {
               指定メッセージ（送信順）
             </h4>
             <p style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>
-              ハンドルをドラッグして並び替え。送信済みのメッセージは自動的にスキップされます。
+              ↑↓ボタンで並び替え。全て送信されると自動的に最初に戻ります。
             </p>
             {digestMessages.filter(m => m.type === 'scheduled').map((msg, idx) => (
               <div
                 key={msg.id}
                 style={{
                   padding: 12,
-                  border: dragOverId === msg.id ? '2px solid #b8a88a' : '1px solid #e8e4dd',
+                  border: '1px solid #e8e4dd',
                   borderRadius: 8,
                   marginBottom: 8,
                   background: msg.is_active ? '#fff' : '#f5f5f5',
@@ -939,27 +919,49 @@ export default function AdminPage() {
                   gap: 8,
                 }}
               >
-                <div
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, msg.id)}
-                  onDragOver={(e) => handleDragOver(e, msg.id)}
-                  onDrop={() => handleDrop(msg.id)}
-                  onDragEnd={handleDragEnd}
-                  style={{
-                    cursor: 'grab',
-                    color: '#aaa',
-                    display: 'flex',
-                    alignItems: 'center',
-                    flexShrink: 0,
-                    padding: '4px 2px',
-                    userSelect: 'none',
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="9" cy="6" r="2"/><circle cx="15" cy="6" r="2"/>
-                    <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
-                    <circle cx="9" cy="18" r="2"/><circle cx="15" cy="18" r="2"/>
-                  </svg>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                  <button
+                    onClick={() => handleMoveUp(msg.id)}
+                    disabled={idx === 0}
+                    style={{
+                      width: 28,
+                      height: 22,
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                      background: '#fff',
+                      color: idx === 0 ? '#ddd' : '#555',
+                      cursor: idx === 0 ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      fontSize: 12,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => handleMoveDown(msg.id)}
+                    disabled={idx === digestMessages.filter(m => m.type === 'scheduled').length - 1}
+                    style={{
+                      width: 28,
+                      height: 22,
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                      background: '#fff',
+                      color: idx === digestMessages.filter(m => m.type === 'scheduled').length - 1 ? '#ddd' : '#555',
+                      cursor: idx === digestMessages.filter(m => m.type === 'scheduled').length - 1 ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      fontSize: 12,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↓
+                  </button>
                 </div>
                 <div style={{ fontSize: 12, color: '#aaa', width: 20, textAlign: 'center', flexShrink: 0 }}>
                   {idx + 1}
