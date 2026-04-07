@@ -1,6 +1,15 @@
 export async function sendLineDigestMessage(text: string) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  const groupId = process.env.LINE_GROUP_ID;
   if (!token) throw new Error('LINE_CHANNEL_ACCESS_TOKEN is not set');
+  if (!groupId) throw new Error('LINE_GROUP_ID is not set');
+
+  console.log('Sending to LINE:', { groupId: groupId.substring(0, 5) + '...', textLength: text.length });
+
+  const body = JSON.stringify({
+    to: groupId,
+    messages: [{ type: 'text', text }],
+  });
 
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
@@ -8,16 +17,15 @@ export async function sendLineDigestMessage(text: string) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      to: process.env.LINE_GROUP_ID!,
-      messages: [{ type: 'text', text }],
-    }),
+    body,
   });
 
+  const responseText = await res.text();
+  console.log('LINE API response:', res.status, responseText);
+
   if (!res.ok) {
-    const error = await res.text();
-    throw new Error(`LINE API error: ${error}`);
+    throw new Error(`LINE API error (${res.status}): ${responseText}`);
   }
 
-  return res.json();
+  return JSON.parse(responseText);
 }
