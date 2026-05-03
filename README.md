@@ -100,13 +100,13 @@ Vercel の Settings > Environment Variables で以下を設定:
 
 ### 6. Vercel Cron の確認
 
-- `vercel.json` で毎日21:00（JST）に `/api/digest` を実行するよう設定済み
-- Vercel の Cron は無料プランで月100回まで実行可能
-- 初回デプロイ後、Vercel ダッシュボードの Cron タブでスケジュールを確認
+- `/api/digest` は手動実行用で、定期実行のcron設定は無効化済み
+- 必要なときだけ `POST /api/digest` を呼び出して使う
+- Vercel ダッシュボードの Cron タブで定期実行が設定されていないことを確認する
 
 ## 日次ダイジェストの仕様
 
-- 毎日21:00（JST）に実行
+- 手動実行時に、その時点の投稿数を集計
 - その日の投稿数を集計
 - 0件の日は通知しない
 - 1件以上の場合、LINEグループに以下を送信:
